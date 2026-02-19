@@ -9,9 +9,10 @@ import type {
   AirportPlan,
   DayPlan,
   DayTemplate,
-  GeneratorOptions,
+  FlightInfo,
   Itinerary,
   Place,
+  ReturnToHotelPlan,
   ScheduledStop,
   TransitEstimate,
   TravelMode
@@ -32,8 +33,34 @@ const AIRPORT_PLACE: Place = {
 
 const CLUSTER_THRESHOLD_KM = 1.4;
 const STANDARD_SEGMENT_BUFFER_MINS = 15;
+const BAG_DROP_DURATION_MINS = 25;
+const DOMESTIC_CHECKIN_BUFFER_MINS = 120;
+const OUTBOUND_FLIGHT_DEPARTURE_TIME = "14:23";
 
-function parseTimeToMinutes(value: string, fallback = "15:30"): number {
+const TRIP_FLIGHTS: FlightInfo = {
+  inbound: {
+    origin: "Columbus (CMH)",
+    destination: "Boston (BOS)",
+    departureLabel: "March 28, 06:00 AM",
+    arrivalLabel: "March 28, 08:06 AM"
+  },
+  outbound: {
+    origin: "Boston (BOS)",
+    destination: "Columbus (CMH)",
+    departureLabel: "April 2, 02:23 PM",
+    arrivalLabel: "April 2, 04:40 PM"
+  }
+};
+
+const DARK_BY_DAY_KEY: Record<string, string> = {
+  sunday: "18:55",
+  monday: "18:56",
+  tuesday: "18:58",
+  wednesday: "19:00",
+  thursday: "19:01"
+};
+
+function parseTimeToMinutes(value: string, fallback = OUTBOUND_FLIGHT_DEPARTURE_TIME): number {
   const pattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
   const match = value.match(pattern) ?? fallback.match(pattern);
 
@@ -51,6 +78,24 @@ function minutesToClock(totalMinutes: number): string {
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function toMeridiem(clock24: string): string {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(clock24);
+  if (!match) {
+    return clock24;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = match[2];
+  const meridiem = hours >= 12 ? "PM" : "AM";
+  const normalizedHour = hours % 12 || 12;
+
+  return `${normalizedHour}:${minutes} ${meridiem}`;
+}
+
+function getDarkByTime(template: DayTemplate): string {
+  return DARK_BY_DAY_KEY[template.key] ?? "19:00";
 }
 
 function toRadians(degrees: number): number {
@@ -259,11 +304,14 @@ function buildClusterLabel(stops: Place[]): string {
 
 function scheduleDay(
   template: DayTemplate,
-  endOverrideMins?: number
+  endOverrideMins?: number,
+  excludedStopIds: ReadonlySet<string> = new Set()
 ): { plan: DayPlan; filteredRestaurants: number } {
-  const rawStops = template.stopIds
+  const templateStops = template.stopIds
     .map((stopId) => placeById.get(stopId))
     .filter((stop): stop is Place => Boolean(stop));
+  const rawStops = templateStops.filter((stop) => !excludedStopIds.has(stop.id));
+  const duplicateStopsSkipped = templateStops.length - rawStops.length;
 
   let filteredRestaurants = 0;
   const glutenFreeStops = rawStops.filter((stop) => {
@@ -295,7 +343,13 @@ function scheduleDay(
       minDistanceToCluster(stop, primaryCluster) <= 1.8
   );
   const selectedStops = dedupeById([...primaryCluster, ...nearbyRestaurants]);
-  const orderedStops = orderByNearestNeighbor(HOTEL_BASE, selectedStops);
+  const startLocation = template.startFrom === "airport" ? AIRPORT_PLACE : HOTEL_BASE;
+  const shouldAddHotelBagDrop =
+    template.startFrom === "airport" && template.includeHotelBagDrop === true;
+  const attractionStartLocation = shouldAddHotelBagDrop
+    ? HOTEL_BASE
+    : startLocation;
+  const orderedStops = orderByNearestNeighbor(attractionStartLocation, selectedStops);
 
   const startMins = parseTimeToMinutes(template.startTime);
   const defaultEnd = parseTimeToMinutes(template.endTime);
@@ -304,8 +358,36 @@ function scheduleDay(
   const safeEnd = Math.max(startMins + 45, effectiveEnd);
 
   let cursor = startMins;
-  let previousStop = HOTEL_BASE;
+  let previousStop = startLocation;
   const scheduledStops: ScheduledStop[] = [];
+  let hotelBagDropAdded = false;
+
+  if (shouldAddHotelBagDrop) {
+    const airportToHotelTransit = buildTransitEstimate(startLocation, HOTEL_BASE);
+    const arrivalMins = cursor + airportToHotelTransit.recommendedMins;
+    const departureMins = arrivalMins + BAG_DROP_DURATION_MINS;
+
+    if (departureMins <= safeEnd) {
+      const hotelBagDropStop: ScheduledStop = {
+        place: HOTEL_BASE,
+        arrival: minutesToClock(arrivalMins),
+        departure: minutesToClock(departureMins),
+        visitDurationMins: BAG_DROP_DURATION_MINS,
+        transitFromPrevious: airportToHotelTransit
+      };
+
+      cursor = departureMins;
+      if (orderedStops.length > 0 && cursor + STANDARD_SEGMENT_BUFFER_MINS <= safeEnd) {
+        hotelBagDropStop.bufferAfterMins = STANDARD_SEGMENT_BUFFER_MINS;
+        cursor += STANDARD_SEGMENT_BUFFER_MINS;
+        hotelBagDropStop.departure = minutesToClock(cursor);
+      }
+
+      scheduledStops.push(hotelBagDropStop);
+      previousStop = HOTEL_BASE;
+      hotelBagDropAdded = true;
+    }
+  }
 
   for (let i = 0; i < orderedStops.length; i += 1) {
     const currentStop = orderedStops[i];
@@ -345,7 +427,7 @@ function scheduleDay(
 
   if (scheduledStops.length === 0 && orderedStops.length > 0) {
     const fallbackStop = orderedStops[0];
-    const fallbackTransit = buildTransitEstimate(HOTEL_BASE, fallbackStop);
+    const fallbackTransit = buildTransitEstimate(startLocation, fallbackStop);
     const arrival = startMins + fallbackTransit.recommendedMins;
     const fallbackDuration = Math.min(35, fallbackStop.visitDurationMins);
     const departure = Math.min(arrival + fallbackDuration, safeEnd);
@@ -380,23 +462,86 @@ function scheduleDay(
     );
   }
 
+  if (duplicateStopsSkipped > 0) {
+    notes.push(
+      "Repeated places from earlier days were skipped to keep the itinerary unique."
+    );
+  }
+
+  if (template.startFrom === "airport") {
+    notes.push("This day begins from Boston Logan International Airport (BOS).");
+  }
+
+  if (hotelBagDropAdded) {
+    notes.push("First stop routes to your hotel so you can drop bags before exploring.");
+  }
+
+  let returnToHotel: ReturnToHotelPlan | undefined;
+  const finalStop = scheduledStops[scheduledStops.length - 1];
+  if (finalStop && finalStop.place.id !== HOTEL_BASE.id) {
+    const darkByTime = getDarkByTime(template);
+    const leaveByMins = parseTimeToMinutes(finalStop.departure);
+    const darkByMins = parseTimeToMinutes(darkByTime);
+    const afterDark = leaveByMins >= darkByMins;
+    const transitBack = buildTransitEstimate(finalStop.place, HOTEL_BASE);
+    const recommendedMode: TravelMode = afterDark
+      ? "MBTA"
+      : transitBack.recommendedMode;
+    const recommendedMins =
+      recommendedMode === "MBTA" ? transitBack.mbtaMins : transitBack.walkMins;
+    const arriveByTime = minutesToClock(leaveByMins + recommendedMins);
+    const directions =
+      recommendedMode === "MBTA"
+        ? mbtaDirections(finalStop.place, HOTEL_BASE)
+        : walkDirections(finalStop.place, HOTEL_BASE);
+    const safetyNote = afterDark
+      ? "Likely dark for this return. Prefer MBTA, stay on main streets near active corridors, and avoid isolated shortcuts."
+      : "This return should still be before dark. Keep to main streets and switch to MBTA if weather or fatigue changes your comfort level.";
+
+    returnToHotel = {
+      fromPlaceName: finalStop.place.name,
+      leaveByTime: finalStop.departure,
+      arriveByTime,
+      darkByTime,
+      afterDark,
+      recommendedMode,
+      recommendedMins,
+      walkMins: transitBack.walkMins,
+      mbtaMins: transitBack.mbtaMins,
+      directions,
+      safetyNote
+    };
+
+    if (afterDark) {
+      notes.push(
+        `Night return plan: leave ${finalStop.place.name} by ${toMeridiem(
+          finalStop.departure
+        )}, use MBTA, and aim to be back at the hotel by ${toMeridiem(arriveByTime)}.`
+      );
+    }
+  }
+
   return {
     plan: {
       title: template.title,
+      dateLabel: template.dateLabel,
       availabilityLabel: template.availabilityLabel,
       clusterLabel: buildClusterLabel(selectedStops),
       startTime: template.startTime,
       endTime: minutesToClock(safeEnd),
+      startFrom: template.startFrom ?? "hotel",
+      startFromLabel: startLocation.name,
       stops: scheduledStops,
+      returnToHotel,
       notes
     },
     filteredRestaurants
   };
 }
 
-function buildAirportPlan(options: GeneratorOptions): AirportPlan {
-  const departureMins = parseTimeToMinutes(options.flightDepartureTime);
-  const checkInBufferMins = options.flightType === "international" ? 180 : 120;
+function buildAirportPlan(): AirportPlan {
+  const departureMins = parseTimeToMinutes(OUTBOUND_FLIGHT_DEPARTURE_TIME);
+  const checkInBufferMins = DOMESTIC_CHECKIN_BUFFER_MINS;
   const transitBufferMins = 20;
 
   const mbtaTransit = buildTransitEstimate(HOTEL_BASE, AIRPORT_PLACE);
@@ -406,7 +551,6 @@ function buildAirportPlan(options: GeneratorOptions): AirportPlan {
   const earliestComfortableMbta = 5 * 60;
   if (mbtaLeaveHotelMins >= earliestComfortableMbta) {
     return {
-      flightType: options.flightType,
       flightDepartureTime: minutesToClock(departureMins),
       recommendedLeaveHotelTime: minutesToClock(mbtaLeaveHotelMins),
       recommendedLeaveHotelMins: mbtaLeaveHotelMins,
@@ -429,7 +573,6 @@ function buildAirportPlan(options: GeneratorOptions): AirportPlan {
     departureMins - checkInBufferMins - rideshareTrafficBufferMins - rideshareTransitMins;
 
   return {
-    flightType: options.flightType,
     flightDepartureTime: minutesToClock(departureMins),
     recommendedLeaveHotelTime: minutesToClock(leaveHotelMins),
     recommendedLeaveHotelMins: leaveHotelMins,
@@ -446,16 +589,10 @@ function buildAirportPlan(options: GeneratorOptions): AirportPlan {
   };
 }
 
-export function generateBostonConferenceItinerary(
-  options: GeneratorOptions
-): Itinerary {
-  const normalizedOptions: GeneratorOptions = {
-    flightDepartureTime: options.flightDepartureTime || "15:30",
-    flightType: options.flightType
-  };
-
-  const airportPlan = buildAirportPlan(normalizedOptions);
+export function generateBostonConferenceItinerary(): Itinerary {
+  const airportPlan = buildAirportPlan();
   let removedRestaurants = 0;
+  const usedStopIds = new Set<string>();
 
   const dayPlans = DAY_TEMPLATES.map((template) => {
     const isThursday = template.key === "thursday";
@@ -463,14 +600,18 @@ export function generateBostonConferenceItinerary(
 
     const { plan, filteredRestaurants } = scheduleDay(
       template,
-      isThursday ? thursdayStopCutoff : undefined
+      isThursday ? thursdayStopCutoff : undefined,
+      usedStopIds
     );
 
     removedRestaurants += filteredRestaurants;
+    for (const stop of plan.stops) {
+      usedStopIds.add(stop.place.id);
+    }
 
     if (isThursday) {
       plan.notes.push(
-        `Airport transfer: leave hotel by ${airportPlan.recommendedLeaveHotelTime} using ${airportPlan.transferMode}.`
+        `Airport transfer: leave hotel by ${toMeridiem(airportPlan.recommendedLeaveHotelTime)} using ${airportPlan.transferMode}.`
       );
     }
 
@@ -485,6 +626,7 @@ export function generateBostonConferenceItinerary(
   return {
     hotel: HOTEL_BASE,
     conferenceVenue: CONFERENCE_VENUE,
+    flights: TRIP_FLIGHTS,
     dayPlans,
     airportPlan,
     glutenFreeFilterSummary
