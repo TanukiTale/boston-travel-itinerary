@@ -19,6 +19,7 @@ export interface Place {
   visitDurationMins: number;
   description: string;
   glutenFreeSafe?: boolean;
+  soloDiningNote?: string;
   isFreedomTrailStop?: boolean;
   infoUrl?: string;
   infoLabel?: string;
@@ -31,6 +32,7 @@ export interface DayTemplate {
   availabilityLabel: string;
   startTime: string;
   endTime: string;
+  fixedStartTimes?: Record<string, string>;
   startFrom?: DayStartPoint;
   includeHotelBagDrop?: boolean;
   targetNeighborhoods: string[];

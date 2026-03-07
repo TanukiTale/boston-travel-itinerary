@@ -3,44 +3,44 @@
 :root {
   color-scheme: light;
   font-family: "Manrope", "Segoe UI", sans-serif;
-  --paper: #f8f2e6;
-  --paper-mid: #dbe8ff;
-  --paper-deep: #c9dcff;
-  --paper-soft: #fdf9f2;
-  --ink: #173042;
-  --ink-faint: #406079;
-  --sea: #2a5fc0;
-  --sea-deep: #1d3f86;
-  --sunset: #d7733b;
-  --mint: #dce7ff;
-  --line: #c9ddd8;
+  --paper: #f4ead8;
+  --paper-mid: #eadabd;
+  --paper-deep: #d8c2a0;
+  --paper-soft: #fbf4e7;
+  --ink: #2f2217;
+  --ink-faint: #6b5136;
+  --sea: #8b5a39;
+  --sea-deep: #5f3b23;
+  --sunset: #a64a2e;
+  --mint: #efe0c4;
+  --line: #ccb28a;
   --card-shadow: 0 16px 40px rgba(13, 57, 78, 0.12);
   --card-shadow-soft: 0 12px 28px rgba(13, 57, 78, 0.08);
 
-  --app-glow-a: rgba(55, 110, 219, 0.24);
-  --app-glow-b: rgba(119, 151, 238, 0.16);
+  --app-glow-a: rgba(130, 78, 42, 0.16);
+  --app-glow-b: rgba(173, 112, 64, 0.14);
 
   --hero-border: rgba(23, 48, 66, 0.16);
-  --hero-surface-a: rgba(255, 255, 255, 0.82);
-  --hero-surface-b: rgba(253, 248, 241, 0.9);
-  --hero-orb: rgba(72, 126, 230, 0.24);
+  --hero-surface-a: rgba(250, 241, 222, 0.92);
+  --hero-surface-b: rgba(242, 226, 195, 0.95);
+  --hero-orb: rgba(169, 104, 63, 0.24);
 
   --panel-border: rgba(23, 48, 66, 0.15);
-  --panel-surface: rgba(255, 255, 255, 0.7);
+  --panel-surface: rgba(247, 236, 215, 0.84);
   --input-border: rgba(23, 48, 66, 0.22);
-  --input-surface: #ffffff;
+  --input-surface: #fbf3e4;
 
   --card-border: rgba(23, 48, 66, 0.14);
-  --card-surface: rgba(255, 255, 255, 0.8);
+  --card-surface: rgba(247, 237, 217, 0.9);
 
-  --transit-border: rgba(55, 110, 219, 0.4);
-  --transit-surface: #dbe8ff;
-  --transit-metric-border: rgba(55, 110, 219, 0.24);
-  --transit-metric-surface: rgba(227, 236, 255, 0.92);
-  --transit-metric-label: rgba(23, 64, 129, 0.78);
+  --transit-border: rgba(141, 89, 53, 0.36);
+  --transit-surface: #f2e1c3;
+  --transit-metric-border: rgba(141, 89, 53, 0.26);
+  --transit-metric-surface: rgba(244, 228, 199, 0.94);
+  --transit-metric-label: rgba(95, 59, 35, 0.86);
 
   --stop-border: rgba(23, 48, 66, 0.1);
-  --stop-surface: #ffffff;
+  --stop-surface: #fbf3e5;
   --notes-divider: rgba(23, 48, 66, 0.12);
 
   --airport-border: rgba(12, 67, 93, 0.24);
@@ -51,11 +51,11 @@
   --airport-metric-label: rgba(236, 247, 251, 0.86);
   --airport-steps: #f5fcff;
 
-  --toggle-bg: rgba(255, 255, 255, 0.86);
-  --toggle-bg-hover: #ffffff;
-  --toggle-border: rgba(12, 67, 93, 0.3);
-  --toggle-text: #0c435d;
-  --map-link: #1d3f86;
+  --toggle-bg: rgba(250, 242, 227, 0.9);
+  --toggle-bg-hover: #fcf5e9;
+  --toggle-border: rgba(100, 62, 36, 0.34);
+  --toggle-text: #5f3b23;
+  --map-link: #6a4328;
 }
 
 [data-theme="dark"] {
@@ -126,9 +126,19 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    radial-gradient(circle at 15% 15%, var(--app-glow-a), transparent 40%),
-    radial-gradient(circle at 84% 22%, var(--app-glow-b), transparent 36%),
-    linear-gradient(170deg, var(--paper) 0%, var(--paper-mid) 55%, var(--paper-deep) 100%);
+    radial-gradient(circle at 14% 12%, var(--app-glow-a), transparent 38%),
+    radial-gradient(circle at 86% 20%, var(--app-glow-b), transparent 34%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(95, 59, 35, 0.03) 0 1px,
+      transparent 1px 16px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(95, 59, 35, 0.02) 0 1px,
+      transparent 1px 24px
+    ),
+    linear-gradient(165deg, var(--paper) 0%, var(--paper-mid) 56%, var(--paper-deep) 100%);
   transition:
     background 220ms ease,
     color 220ms ease;
@@ -464,6 +474,12 @@ body {
   gap: 0.45rem;
 }
 
+.day-header-controls {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: flex-end;
+}
+
 .day-title {
   margin: 0;
   font-family: "Fraunces", "Times New Roman", serif;
@@ -537,11 +553,190 @@ body {
   font-size: 0.9rem;
 }
 
+.day-content {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.day-content-recalibrating {
+  opacity: 0.86;
+  transform: translateY(1px);
+}
+
+.day-more-menu-wrap {
+  position: relative;
+}
+
+.day-more-menu-btn {
+  border: 1px solid var(--toggle-border);
+  border-radius: 999px;
+  background: var(--toggle-bg);
+  color: var(--toggle-text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.62rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.day-more-menu-btn:hover {
+  background: var(--toggle-bg-hover);
+}
+
+.day-more-menu-btn:active {
+  transform: translateY(1px);
+}
+
+.day-more-menu-btn:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+
+.energy-mode-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  min-width: 170px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel-surface);
+  box-shadow: var(--card-shadow-soft);
+  padding: 0.32rem;
+  display: grid;
+  gap: 0.24rem;
+  z-index: 6;
+}
+
+.energy-mode-menu-item {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  padding: 0.42rem 0.5rem;
+  cursor: pointer;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.energy-mode-menu-item:hover {
+  background: var(--toggle-bg-hover);
+}
+
+.energy-mode-menu-item:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 1px;
+}
+
+.energy-mode-menu-item.is-selected {
+  border-color: var(--sea);
+  background: var(--mint);
+}
+
+.energy-mode-menu-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--sea-deep);
+}
+
+.energy-mode-menu-state {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .day-adjust-controls {
   margin-top: 0.8rem;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
+}
+
+.morning-run-section {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.morning-run-toggle {
+  justify-self: start;
+}
+
+.morning-run-collapsed-note {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+}
+
+.morning-run-card {
+  border: 1px solid var(--transit-border);
+  border-radius: 14px;
+  background: var(--transit-surface);
+  padding: 0.68rem 0.74rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.morning-run-card-label {
+  border: 1px solid var(--transit-metric-border);
+  background: var(--transit-metric-surface);
+  color: var(--sea-deep);
+}
+
+.morning-run-title {
+  margin: 0;
+  color: var(--sea-deep);
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.morning-run-meta {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.morning-run-energy-note {
+  margin: 0.05rem 0 0;
+  color: var(--sea-deep);
+  font-size: 0.81rem;
+  font-weight: 700;
+}
+
+.morning-run-heading {
+  margin: 0.12rem 0 0;
+  color: var(--sea-deep);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.morning-run-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--ink-faint);
+  font-size: 0.81rem;
+  line-height: 1.4;
+}
+
+.morning-run-list li + li {
+  margin-top: 0.18rem;
+}
+
+.morning-run-safety-note {
+  margin: 0.12rem 0 0;
+  color: var(--sea-deep);
+  font-size: 0.8rem;
 }
 
 .day-adjust-field {
@@ -678,6 +873,50 @@ body {
   color: var(--ink-faint);
 }
 
+.optional-extra-card {
+  margin-top: 0.72rem;
+  border-radius: 12px;
+  border: 1px dashed var(--transit-border);
+  background: var(--transit-surface);
+  padding: 0.6rem 0.7rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.optional-card-label {
+  border: 1px solid var(--transit-metric-border);
+  background: var(--transit-metric-surface);
+  color: var(--sea-deep);
+}
+
+.optional-extra-title {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--sea-deep);
+  font-weight: 700;
+}
+
+.optional-extra-description {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.additional-options-section {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.additional-options-list {
+  margin: 0;
+}
+
+.additional-sight-card {
+  border-style: dashed;
+}
+
 .return-hotel-card {
   margin-top: 0.75rem;
   border-radius: 14px;
@@ -747,6 +986,50 @@ body {
   padding: 0.75rem;
 }
 
+.stop-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stop-card-toggle {
+  border: 1px solid var(--toggle-border);
+  border-radius: 999px;
+  background: var(--toggle-bg);
+  color: var(--toggle-text);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.24rem 0.54rem;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.stop-card-toggle:hover {
+  background: var(--toggle-bg-hover);
+}
+
+.stop-card-toggle:active {
+  transform: translateY(1px);
+}
+
+.stop-card-toggle:focus-visible {
+  outline: 2px solid var(--sea);
+  outline-offset: 2px;
+}
+
+.stop-card-collapsed-summary {
+  margin: 0.35rem 0 0;
+  font-size: 0.81rem;
+  color: var(--ink-faint);
+}
+
 .stop-time {
   margin: 0;
   font-size: 0.82rem;
@@ -774,6 +1057,17 @@ body {
   margin: 0.4rem 0 0;
   color: var(--ink-faint);
   line-height: 1.45;
+}
+
+.solo-dining-note {
+  margin: 0.45rem 0 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.42rem 0.5rem;
+  background: var(--mint);
+  color: var(--sea-deep);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .stop-photo-block {
@@ -1075,6 +1369,19 @@ body {
   .day-header-actions {
     width: 100%;
     align-items: flex-start;
+  }
+
+  .day-header-controls {
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .day-more-menu-wrap {
+    width: 100%;
+  }
+
+  .day-more-menu-btn {
+    width: 100%;
   }
 
   .day-collapse-toggle {

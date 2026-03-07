@@ -3,7 +3,8 @@ import {
   CONFERENCE_VENUE,
   DAY_TEMPLATES,
   HOTEL_BASE,
-  MBTA_OVERRIDES
+  MBTA_OVERRIDES,
+  NEARBY_MBTA_STATIONS
 } from "../data/places";
 import type {
   AirportPlan,
@@ -36,6 +37,7 @@ const STANDARD_SEGMENT_BUFFER_MINS = 15;
 const BAG_DROP_DURATION_MINS = 25;
 const DOMESTIC_CHECKIN_BUFFER_MINS = 120;
 const OUTBOUND_FLIGHT_DEPARTURE_TIME = "14:23";
+const FREEDOM_TRAIL_TOUR_ID = "freedom-trail-walk-tour";
 
 const TRIP_FLIGHTS: FlightInfo = {
   inbound: {
@@ -59,6 +61,8 @@ const DARK_BY_DAY_KEY: Record<string, string> = {
   wednesday: "19:00",
   thursday: "19:01"
 };
+
+const SIGHT_PROXIMITY_PRECISION = 1000;
 
 function parseTimeToMinutes(value: string, fallback = OUTBOUND_FLIGHT_DEPARTURE_TIME): number {
   const pattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -136,30 +140,69 @@ function estimateMbtaMinutes(from: Place, to: Place): number {
   return Math.max(12, Math.round(distance * 8 + 10));
 }
 
+function formatNearbyStations(place: Place): string | null {
+  const stations =
+    NEARBY_MBTA_STATIONS[place.id] ??
+    (place.id === AIRPORT_PLACE.id ? NEARBY_MBTA_STATIONS[AIRPORT_PLACE.id] : undefined);
+
+  if (!stations || stations.length === 0) {
+    return null;
+  }
+
+  if (stations.length === 1) {
+    return stations[0];
+  }
+
+  return `${stations[0]} or ${stations[1]}`;
+}
+
 function walkDirections(from: Place, to: Place): string {
-  return `Walk from ${from.neighborhood} to ${to.neighborhood}; this leg is short enough that walking is typically simplest and fastest.`;
+  const destinationStations = formatNearbyStations(to);
+  const stationFallback = destinationStations
+    ? `If energy shifts, the nearest T options at arrival are ${destinationStations}.`
+    : "If energy shifts, switch this leg to MBTA.";
+
+  return `Walk from ${from.neighborhood} to ${to.neighborhood}; this leg is short enough that walking is typically simplest and fastest. ${stationFallback}`;
 }
 
 function mbtaDirections(from: Place, to: Place): string {
   const directOverride = MBTA_OVERRIDES[`${from.id}->${to.id}`];
+  const fromStations = formatNearbyStations(from);
+  const toStations = formatNearbyStations(to);
+  const stationHint =
+    fromStations || toStations
+      ? ` Nearest T near this leg: start ${fromStations ?? "by your current area"}, end ${
+          toStations ?? "near your destination"
+        }.`
+      : "";
+
   if (directOverride) {
-    return directOverride.directions;
+    return `${directOverride.directions}${stationHint}`;
   }
 
   const reverseOverride = MBTA_OVERRIDES[`${to.id}->${from.id}`];
   if (reverseOverride) {
-    return reverseOverride.reverseDirections ?? reverseOverride.directions;
+    const reverseDirections = reverseOverride.reverseDirections ?? reverseOverride.directions;
+    return `${reverseDirections}${stationHint}`;
   }
 
-  return `Use the MBTA from ${from.neighborhood} toward ${to.neighborhood} with one transfer, then walk the final few blocks.`;
+  return `Use the MBTA from ${from.neighborhood} toward ${to.neighborhood} with one transfer, then walk the final few blocks.${stationHint}`;
 }
 
 function pickTravelMode(walkMins: number, mbtaMins: number): TravelMode {
-  if (walkMins <= 18) {
+  if (walkMins <= 16) {
     return "WALK";
   }
 
-  if (mbtaMins + 8 < walkMins * 1.3) {
+  if (walkMins >= 28) {
+    return "MBTA";
+  }
+
+  if (mbtaMins <= walkMins - 4) {
+    return "MBTA";
+  }
+
+  if (walkMins > 20 && mbtaMins <= walkMins + 4) {
     return "MBTA";
   }
 
@@ -263,6 +306,20 @@ function dedupeById(stops: Place[]): Place[] {
   return [...map.values()];
 }
 
+function isSightPlace(place: Place): boolean {
+  return (
+    place.category !== "restaurant" &&
+    place.category !== "conference" &&
+    place.category !== "airport"
+  );
+}
+
+function toSightProximityKey(place: Place): string {
+  const latKey = Math.round(place.lat * SIGHT_PROXIMITY_PRECISION);
+  const lngKey = Math.round(place.lng * SIGHT_PROXIMITY_PRECISION);
+  return `${latKey}:${lngKey}`;
+}
+
 function orderByNearestNeighbor(start: Place, stops: Place[]): Place[] {
   const remaining = [...stops];
   const ordered: Place[] = [];
@@ -311,10 +368,18 @@ function scheduleDay(
     .map((stopId) => placeById.get(stopId))
     .filter((stop): stop is Place => Boolean(stop));
   const rawStops = templateStops.filter((stop) => !excludedStopIds.has(stop.id));
-  const duplicateStopsSkipped = templateStops.length - rawStops.length;
+  const hasFreedomTrailTour = rawStops.some((stop) => stop.id === FREEDOM_TRAIL_TOUR_ID);
+  const stopsAfterTrailDedup = hasFreedomTrailTour
+    ? rawStops.filter(
+        (stop) =>
+          stop.id === FREEDOM_TRAIL_TOUR_ID ||
+          stop.isFreedomTrailStop !== true
+      )
+    : rawStops;
+  const duplicateStopsSkipped = templateStops.length - stopsAfterTrailDedup.length;
 
   let filteredRestaurants = 0;
-  const glutenFreeStops = rawStops.filter((stop) => {
+  const glutenFreeStops = stopsAfterTrailDedup.filter((stop) => {
     if (stop.category !== "restaurant") {
       return true;
     }
@@ -342,14 +407,36 @@ function scheduleDay(
       stop.category === "restaurant" &&
       minDistanceToCluster(stop, primaryCluster) <= 1.8
   );
-  const selectedStops = dedupeById([...primaryCluster, ...nearbyRestaurants]);
+  const isFullDay = template.availabilityLabel.toLowerCase().includes("full day");
+  const selectedStops = isFullDay
+    ? dedupeById(glutenFreeStops)
+    : dedupeById([...primaryCluster, ...nearbyRestaurants]);
   const startLocation = template.startFrom === "airport" ? AIRPORT_PLACE : HOTEL_BASE;
   const shouldAddHotelBagDrop =
     template.startFrom === "airport" && template.includeHotelBagDrop === true;
   const attractionStartLocation = shouldAddHotelBagDrop
     ? HOTEL_BASE
     : startLocation;
-  const orderedStops = orderByNearestNeighbor(attractionStartLocation, selectedStops);
+  const fixedStartTimes = template.fixedStartTimes ?? {};
+  const fixedStopIds = new Set(Object.keys(fixedStartTimes));
+  const fixedOrderedStops = selectedStops
+    .filter((stop) => fixedStopIds.has(stop.id))
+    .sort(
+      (a, b) =>
+        parseTimeToMinutes(fixedStartTimes[a.id]) -
+        parseTimeToMinutes(fixedStartTimes[b.id])
+    );
+  const flexibleStops = selectedStops.filter((stop) => !fixedStopIds.has(stop.id));
+  const orderedStops =
+    fixedOrderedStops.length > 0
+      ? dedupeById([
+          ...fixedOrderedStops,
+          ...orderByNearestNeighbor(
+            fixedOrderedStops[fixedOrderedStops.length - 1],
+            flexibleStops
+          )
+        ])
+      : orderByNearestNeighbor(attractionStartLocation, selectedStops);
 
   const startMins = parseTimeToMinutes(template.startTime);
   const defaultEnd = parseTimeToMinutes(template.endTime);
@@ -393,12 +480,19 @@ function scheduleDay(
     const currentStop = orderedStops[i];
     const transit = buildTransitEstimate(previousStop, currentStop);
     const tentativeArrival = cursor + transit.recommendedMins;
+    const fixedStartMins = fixedStartTimes[currentStop.id]
+      ? parseTimeToMinutes(fixedStartTimes[currentStop.id])
+      : undefined;
+    const effectiveArrivalMins =
+      fixedStartMins !== undefined
+        ? Math.max(tentativeArrival, fixedStartMins)
+        : tentativeArrival;
 
-    if (tentativeArrival + currentStop.visitDurationMins > safeEnd) {
+    if (effectiveArrivalMins + currentStop.visitDurationMins > safeEnd) {
       continue;
     }
 
-    cursor = tentativeArrival;
+    cursor = effectiveArrivalMins;
     const arrivalMins = cursor;
     cursor += currentStop.visitDurationMins;
 
@@ -448,6 +542,21 @@ function scheduleDay(
     "Each major segment includes a built-in buffer to reduce schedule stress."
   ];
 
+  const transitLegs = scheduledStops
+    .map((stop) => stop.transitFromPrevious)
+    .filter((leg): leg is TransitEstimate => Boolean(leg));
+  if (transitLegs.length > 0) {
+    const shortWalkableLegs = transitLegs.filter((leg) => leg.walkMins <= 20).length;
+    const longerLegs = transitLegs.length - shortWalkableLegs;
+    notes.push(
+      longerLegs > 0
+        ? `Mobility check: ${shortWalkableLegs}/${transitLegs.length} legs are short walkable hops. ${longerLegs} longer hop${
+            longerLegs === 1 ? "" : "s"
+          } include nearby MBTA station guidance.`
+        : `Mobility check: all ${transitLegs.length} planned legs are short walkable hops.`
+    );
+  }
+
   if (orderedStops.length > scheduledStops.length) {
     notes.push("Optional stops were trimmed to keep the plan realistic for this window.");
   }
@@ -468,8 +577,26 @@ function scheduleDay(
     );
   }
 
+  if (hasFreedomTrailTour) {
+    notes.push(
+      "Freedom Trail tour is scheduled and overlapping Freedom Trail site duplicates were removed."
+    );
+  }
+
+  if (fixedStartTimes[FREEDOM_TRAIL_TOUR_ID]) {
+    notes.push(
+      `Freedom Trail tour starts at ${toMeridiem(fixedStartTimes[FREEDOM_TRAIL_TOUR_ID])}.`
+    );
+  }
+
   if (template.startFrom === "airport") {
     notes.push("This day begins from Boston Logan International Airport (BOS).");
+  }
+
+  if (template.key === "tuesday") {
+    notes.push(
+      "Conference block reminder: Inner Harbour ferry tour runs 3:00 PM-5:00 PM from Long Wharf, so evening sightseeing starts after a recovery buffer."
+    );
   }
 
   if (hotelBagDropAdded) {
@@ -593,6 +720,15 @@ export function generateBostonConferenceItinerary(): Itinerary {
   const airportPlan = buildAirportPlan();
   let removedRestaurants = 0;
   const usedStopIds = new Set<string>();
+  const usedSightProximityKeys = new Set<string>();
+  let excludedStopIds = new Set<string>();
+  const freedomTrailCoveredStopIds = new Set(
+    BOSTON_PLACES.filter(
+      (place) =>
+        place.isFreedomTrailStop === true &&
+        place.id !== FREEDOM_TRAIL_TOUR_ID
+    ).map((place) => place.id)
+  );
 
   const dayPlans = DAY_TEMPLATES.map((template) => {
     const isThursday = template.key === "thursday";
@@ -601,12 +737,30 @@ export function generateBostonConferenceItinerary(): Itinerary {
     const { plan, filteredRestaurants } = scheduleDay(
       template,
       isThursday ? thursdayStopCutoff : undefined,
-      usedStopIds
+      excludedStopIds
     );
 
     removedRestaurants += filteredRestaurants;
     for (const stop of plan.stops) {
       usedStopIds.add(stop.place.id);
+      if (isSightPlace(stop.place)) {
+        usedSightProximityKeys.add(toSightProximityKey(stop.place));
+      }
+    }
+    if (plan.stops.some((stop) => stop.place.id === FREEDOM_TRAIL_TOUR_ID)) {
+      for (const coveredStopId of freedomTrailCoveredStopIds) {
+        usedStopIds.add(coveredStopId);
+      }
+    }
+
+    excludedStopIds = new Set(usedStopIds);
+    for (const place of BOSTON_PLACES) {
+      if (
+        isSightPlace(place) &&
+        usedSightProximityKeys.has(toSightProximityKey(place))
+      ) {
+        excludedStopIds.add(place.id);
+      }
     }
 
     if (isThursday) {

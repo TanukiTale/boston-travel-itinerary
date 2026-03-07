@@ -140,13 +140,14 @@ export const BOSTON_PLACES: Place[] = [
   },
   {
     id: "beacon-hill-stroll",
-    name: "Beacon Hill Stroll (Acorn St + Louisburg Sq)",
+    name: "Acorn Street + Beacon Hill Stroll",
     category: "historic",
     neighborhood: "Beacon Hill",
     lat: 42.3587,
     lng: -71.0675,
     visitDurationMins: 65,
-    description: "Cobblestone lanes, gas lamps, and classic Boston architecture.",
+    description:
+      "Walk down Acorn Street first, then continue through nearby Beacon Hill lanes and Louisburg Square.",
     infoUrl: "https://www.boston.gov/neighborhood/beacon-hill",
     infoLabel: "Neighborhood guide"
   },
@@ -303,6 +304,196 @@ export const BOSTON_PLACES: Place[] = [
     infoLabel: "Museum details"
   },
   {
+    id: "old-state-house-stop",
+    name: "Old State House",
+    category: "historic",
+    neighborhood: "Downtown",
+    lat: 42.3588,
+    lng: -71.0578,
+    visitDurationMins: 40,
+    isFreedomTrailStop: true,
+    description: "Compact museum stop at one of Boston's most iconic Revolutionary sites.",
+    infoUrl: "https://www.bostonhistory.org/old-state-house/",
+    infoLabel: "Museum details"
+  },
+  {
+    id: "copps-hill-burying-ground",
+    name: "Copp's Hill Burying Ground",
+    category: "historic",
+    neighborhood: "North End",
+    lat: 42.3672,
+    lng: -71.055,
+    visitDurationMins: 35,
+    isFreedomTrailStop: true,
+    description:
+      "Hilltop cemetery stop with harbor views and deep colonial-era history on the Freedom Trail.",
+    infoUrl: "https://www.thefreedomtrail.org/site/copps-hill-burying-ground",
+    infoLabel: "Site history"
+  },
+  {
+    id: "greenway-art-walk",
+    name: "Nichols House Museum + Charles Street Stroll",
+    category: "historic",
+    neighborhood: "Beacon Hill",
+    lat: 42.3589,
+    lng: -71.0682,
+    visitDurationMins: 45,
+    description:
+      "Quaint Beacon Hill stop with period-house history and a calm stroll along Charles Street side lanes.",
+    infoUrl: "https://www.nicholshousemuseum.org/visit",
+    infoLabel: "Museum details"
+  },
+  {
+    id: "louisburg-square-loop",
+    name: "Louisburg Square + Mount Vernon St Micro-Loop",
+    category: "historic",
+    neighborhood: "Beacon Hill",
+    lat: 42.3589,
+    lng: -71.0688,
+    visitDurationMins: 25,
+    description:
+      "Quick 15-25 minute Beacon Hill micro-loop with classic brick streets just beyond Acorn Street.",
+    infoUrl: "https://www.boston.gov/neighborhood/beacon-hill",
+    infoLabel: "Neighborhood guide"
+  },
+  {
+    id: "kings-chapel-stop",
+    name: "King's Chapel + Burying Ground",
+    category: "historic",
+    neighborhood: "Downtown",
+    lat: 42.3576,
+    lng: -71.0618,
+    visitDurationMins: 40,
+    isFreedomTrailStop: true,
+    description:
+      "Historic chapel and adjacent burying ground in the core of downtown Boston.",
+    infoUrl: "https://www.kings-chapel.org/",
+    infoLabel: "Visitor details"
+  },
+  {
+    id: "commonwealth-ave-mall",
+    name: "Commonwealth Avenue Mall Stroll",
+    category: "viewpoint",
+    neighborhood: "Back Bay",
+    lat: 42.3507,
+    lng: -71.0802,
+    visitDurationMins: 45,
+    description: "Tree-lined Back Bay promenade with statues, brownstones, and city rhythm.",
+    infoUrl: "https://www.boston.gov/parks/commonwealth-avenue-mall",
+    infoLabel: "Park details"
+  },
+  {
+    id: "old-city-hall-stop",
+    name: "Old City Hall Courtyard Stop",
+    category: "historic",
+    neighborhood: "Downtown",
+    lat: 42.3581,
+    lng: -71.0598,
+    visitDurationMins: 35,
+    description: "Quick architectural stop in one of Boston's landmark civic buildings.",
+    infoUrl: "https://www.boston.gov/departments/landmarks-commission",
+    infoLabel: "Landmarks info"
+  },
+  {
+    id: "boston-public-market-stop",
+    name: "Boston Public Market Browse",
+    category: "historic",
+    neighborhood: "Downtown",
+    lat: 42.3611,
+    lng: -71.0572,
+    visitDurationMins: 45,
+    description:
+      "Indoor local-maker market with a classic central-city atmosphere and easy transit links.",
+    infoUrl: "https://bostonpublicmarket.org/",
+    infoLabel: "Market details"
+  },
+  {
+    id: "trinity-church-interior-stop",
+    name: "Trinity Church Interior Visit",
+    category: "historic",
+    neighborhood: "Back Bay",
+    lat: 42.3499,
+    lng: -71.0782,
+    visitDurationMins: 40,
+    description: "Short interior architecture visit at one of Boston's landmark churches.",
+    infoUrl: "https://trinitychurchboston.org/visit/",
+    infoLabel: "Visit details"
+  },
+  {
+    id: "prudential-skyline-view",
+    name: "View Boston at Prudential Center",
+    category: "viewpoint",
+    neighborhood: "Back Bay",
+    lat: 42.3472,
+    lng: -71.0829,
+    visitDurationMins: 55,
+    description: "Skyline panorama stop for a broad orientation of Boston neighborhoods.",
+    infoUrl: "https://viewboston.com/",
+    infoLabel: "Attraction details"
+  },
+  {
+    id: "charles-esplanade-walk",
+    name: "Charles River Esplanade Walk",
+    category: "viewpoint",
+    neighborhood: "Back Bay",
+    lat: 42.3567,
+    lng: -71.0734,
+    visitDurationMins: 50,
+    description: "Relaxed riverfront path with bridge views and an easy evening pace.",
+    infoUrl: "https://esplanadeassociation.org/",
+    infoLabel: "Trail details"
+  },
+  {
+    id: "old-south-church-stop",
+    name: "Old South Church (Back Bay) Visit",
+    category: "historic",
+    neighborhood: "Back Bay",
+    lat: 42.3494,
+    lng: -71.0768,
+    visitDurationMins: 35,
+    description:
+      "Historic Back Bay church stop with striking Romanesque design and city-center location.",
+    infoUrl: "https://oldsouth.org/",
+    infoLabel: "Church details"
+  },
+  {
+    id: "custom-house-tower-stop",
+    name: "Custom House Tower Exterior Stop",
+    category: "historic",
+    neighborhood: "Waterfront",
+    lat: 42.3589,
+    lng: -71.0515,
+    visitDurationMins: 35,
+    description: "Historic skyline landmark near the harbor and downtown crossings.",
+    infoUrl:
+      "https://www.marriott.com/en-us/hotels/bosch-the-custom-house-a-marriott-vacation-club-resort/overview/",
+    infoLabel: "Landmark details"
+  },
+  {
+    id: "long-wharf-promenade",
+    name: "Long Wharf Promenade",
+    category: "viewpoint",
+    neighborhood: "Waterfront",
+    lat: 42.3598,
+    lng: -71.0498,
+    visitDurationMins: 35,
+    description: "Short harbor promenade with ferries, skyline views, and sea-breeze break.",
+    infoUrl: "https://www.bostonharborwalk.org/",
+    infoLabel: "Harborwalk details"
+  },
+  {
+    id: "fan-pier-park-stop",
+    name: "Fan Pier Park Harbor Pause",
+    category: "waterfront",
+    neighborhood: "Seaport",
+    lat: 42.3526,
+    lng: -71.0443,
+    visitDurationMins: 40,
+    description: "Open-air Seaport pause point with broad harbor and skyline views.",
+    infoUrl: "https://www.bostonharborwalk.org/",
+    infoLabel: "Harborwalk details"
+  },
+  {
     id: "legal-harborside",
     name: "Legal Sea Foods Harborside",
     category: "restaurant",
@@ -312,6 +503,8 @@ export const BOSTON_PLACES: Place[] = [
     visitDurationMins: 75,
     description:
       "Gluten-free friendly seafood with an established allergen-handling menu.",
+    soloDiningNote:
+      "Large waterfront space with bar seating, usually easier for solo dining than peak table times.",
     infoUrl: "https://www.legalseafoods.com/locations/the-overlook-at-boston-harborside/",
     infoLabel: "Restaurant details",
     glutenFreeSafe: true
@@ -326,6 +519,8 @@ export const BOSTON_PLACES: Place[] = [
     visitDurationMins: 55,
     description:
       "Dedicated gluten-free bakery and cafe; useful for safe breakfast or snack planning.",
+    soloDiningNote:
+      "Counter-service setup is straightforward for solo travelers and easy for a quick stop.",
     infoUrl:
       "https://bostonpublicmarket.org/vendors/jennifer-lees-allergen-friendly-vegan-shoppe/",
     infoLabel: "Vendor details",
@@ -340,7 +535,9 @@ export const BOSTON_PLACES: Place[] = [
     lng: -71.0516,
     visitDurationMins: 80,
     description:
-      "Italian dinner stop with clearly marked gluten-free options and allergy accommodations.",
+      "Gluten-free-friendly Italian stop that works well for ordering pickup and taking dinner back to the Westin.",
+    soloDiningNote:
+      "Best used as a solo pickup stop in the evening so you can bring dinner back to the hotel without adding extra walking.",
     infoUrl: "https://www.neborestaurant.com/",
     infoLabel: "Restaurant details",
     glutenFreeSafe: true
@@ -366,15 +563,17 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     availabilityLabel: "Full day available",
     startTime: "09:00",
     endTime: "20:30",
+    fixedStartTimes: {
+      "freedom-trail-walk-tour": "12:00"
+    },
     startFrom: "airport",
     includeHotelBagDrop: true,
-    targetNeighborhoods: ["Downtown", "North End", "Beacon Hill"],
+    targetNeighborhoods: ["Downtown", "Waterfront", "Seaport"],
     stopIds: [
-      "paul-revere-house",
-      "old-north-church",
-      "quincy-market",
+      "freedom-trail-walk-tour",
+      "greenway-art-walk",
       "tea-party-tea-room",
-      "boston-common-loop",
+      "ica-waterfront",
       "legal-harborside"
     ]
   },
@@ -389,7 +588,9 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     stopIds: [
       "beacon-hill-stroll",
       "state-house-stop",
-      "public-garden-loop",
+      "louisburg-square-loop",
+      "kings-chapel-stop",
+      "commonwealth-ave-mall",
       "nebo-cucina"
     ]
   },
@@ -397,15 +598,17 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     key: "tuesday",
     title: "Tuesday",
     dateLabel: "March 31, 2026",
-    availabilityLabel: "Conference day (evening only)",
-    startTime: "18:00",
+    availabilityLabel: "Conference day (ferry 3:00 PM-5:00 PM, evening only)",
+    startTime: "18:30",
     endTime: "21:30",
     targetNeighborhoods: ["Downtown", "Back Bay"],
     stopIds: [
-      "freedom-trail-walk-tour",
       "granary-burying-ground",
       "old-south-meeting-house",
-      "jennifer-lees",
+      "old-city-hall-stop",
+      "boston-public-market-stop",
+      "trinity-church-interior-stop",
+      "nebo-cucina",
       "downtown-crossing-stroll"
     ]
   },
@@ -417,7 +620,14 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     startTime: "18:15",
     endTime: "21:30",
     targetNeighborhoods: ["Back Bay", "Downtown"],
-    stopIds: ["bpl-courtyard", "copley-square-trinity", "newbury-street-stroll"]
+    stopIds: [
+      "bpl-courtyard",
+      "copley-square-trinity",
+      "newbury-street-stroll",
+      "prudential-skyline-view",
+      "charles-esplanade-walk",
+      "old-south-church-stop"
+    ]
   },
   {
     key: "thursday",
@@ -430,10 +640,60 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     stopIds: [
       "boston-athenaeum-exterior",
       "chinatown-gateway-walk",
-      "harborwalk-seaport"
+      "harborwalk-seaport",
+      "custom-house-tower-stop",
+      "long-wharf-promenade",
+      "fan-pier-park-stop"
     ]
   }
 ];
+
+export const NEARBY_MBTA_STATIONS: Record<string, string[]> = {
+  "westin-seaport": ["World Trade Center (SL1)", "Courthouse (SL1)"],
+  "thinktransit-conference": ["World Trade Center (SL1)", "Courthouse (SL1)"],
+  "freedom-trail-walk-tour": ["Park Street", "Boylston"],
+  "city-view-bike-tour": ["Aquarium", "State"],
+  "paul-revere-house": ["Haymarket", "North Station"],
+  "old-north-church": ["North Station", "Haymarket"],
+  "quincy-market": ["Government Center", "Haymarket"],
+  "boston-common-loop": ["Park Street", "Boylston"],
+  "granary-burying-ground": ["Park Street", "Downtown Crossing"],
+  "state-house-stop": ["Park Street", "Government Center"],
+  "beacon-hill-stroll": ["Charles/MGH", "Park Street"],
+  "public-garden-loop": ["Arlington", "Boylston"],
+  "old-south-meeting-house": ["Downtown Crossing", "State"],
+  "copley-square-trinity": ["Copley", "Back Bay"],
+  "bpl-courtyard": ["Copley", "Back Bay"],
+  "newbury-street-stroll": ["Copley", "Hynes Convention Center"],
+  "chinatown-gateway-walk": ["Chinatown", "Downtown Crossing"],
+  "downtown-crossing-stroll": ["Downtown Crossing", "State"],
+  "boston-athenaeum-exterior": ["Park Street", "Downtown Crossing"],
+  "harborwalk-seaport": ["World Trade Center (SL1)", "Courthouse (SL1)"],
+  "ica-waterfront": ["World Trade Center (SL1)", "Courthouse (SL1)"],
+  "north-end-waterfront": ["Aquarium", "Haymarket"],
+  "rowes-wharf": ["Aquarium", "South Station"],
+  "tea-party-tea-room": ["South Station", "Courthouse (SL1)"],
+  "old-state-house-stop": ["State", "Downtown Crossing"],
+  "copps-hill-burying-ground": ["Haymarket", "North Station"],
+  "greenway-art-walk": ["Charles/MGH", "Park Street"],
+  "louisburg-square-loop": ["Charles/MGH", "Park Street"],
+  "kings-chapel-stop": ["Park Street", "Government Center"],
+  "commonwealth-ave-mall": ["Copley", "Hynes Convention Center"],
+  "old-city-hall-stop": ["State", "Downtown Crossing"],
+  "boston-public-market-stop": ["Haymarket", "Government Center"],
+  "trinity-church-interior-stop": ["Copley", "Back Bay"],
+  "prudential-skyline-view": ["Prudential", "Back Bay"],
+  "charles-esplanade-walk": ["Arlington", "Charles/MGH"],
+  "old-south-church-stop": ["Copley", "Back Bay"],
+  "custom-house-tower-stop": ["Aquarium", "State"],
+  "long-wharf-promenade": ["Aquarium", "Government Center"],
+  "fan-pier-park-stop": ["World Trade Center (SL1)", "Courthouse (SL1)"],
+  "legal-harborside": ["Aquarium", "State"],
+  "jennifer-lees": ["Downtown Crossing", "Chinatown"],
+  "nebo-cucina": ["South Station", "Broadway"],
+  "mikes-pastry": ["Haymarket", "North Station"],
+  "airport-bos": ["Airport", "Maverick"]
+};
 
 export const MBTA_OVERRIDES: Record<string, MbtaOverride> = {
   "westin-seaport->freedom-trail-walk-tour": {
