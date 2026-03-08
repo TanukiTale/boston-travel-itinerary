@@ -532,6 +532,10 @@ body {
   transition:
     background 180ms ease,
     transform 180ms ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .day-collapse-toggle:hover {
@@ -994,6 +998,13 @@ body {
   gap: 0.5rem;
 }
 
+.stop-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .stop-card-toggle {
   border: 1px solid var(--toggle-border);
   border-radius: 999px;
@@ -1024,10 +1035,44 @@ body {
   outline-offset: 2px;
 }
 
+.stop-card-action-btn {
+  border: 1px solid var(--toggle-border);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.24rem 0.54rem;
+  cursor: pointer;
+}
+
+.stop-card-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.stop-card-add-btn {
+  background: var(--mint);
+  color: var(--sea-deep);
+}
+
+.stop-card-remove-btn {
+  background: var(--toggle-bg-hover);
+  color: var(--ink-faint);
+}
+
 .stop-card-collapsed-summary {
   margin: 0.35rem 0 0;
   font-size: 0.81rem;
   color: var(--ink-faint);
+}
+
+.price-level {
+  margin: 0.28rem 0 0;
+  font-size: 0.78rem;
+  color: var(--sea);
+  font-weight: 700;
 }
 
 .stop-time {
@@ -1059,6 +1104,13 @@ body {
   line-height: 1.45;
 }
 
+.stop-address {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--sea-deep);
+  font-weight: 700;
+}
+
 .solo-dining-note {
   margin: 0.45rem 0 0;
   border: 1px solid var(--line);
@@ -1067,6 +1119,17 @@ body {
   background: var(--mint);
   color: var(--sea-deep);
   font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.open-status-note {
+  margin: 0.42rem 0 0;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.79rem;
+  color: var(--sea-deep);
+  background: var(--paper-soft);
   font-weight: 700;
 }
 
@@ -1098,6 +1161,75 @@ body {
 
 .stop-foot {
   font-size: 0.82rem;
+}
+
+.removed-cards-section {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.removed-cards-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.removed-card-chip {
+  border: 1px solid var(--toggle-border);
+  border-radius: 999px;
+  background: var(--toggle-bg);
+  color: var(--toggle-text);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+}
+
+.weather-tip {
+  margin: 0.75rem 0 0;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--mint);
+  color: var(--sea-deep);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.undo-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--toggle-border);
+  background: var(--card-surface);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 0.55rem 0.65rem;
+  box-shadow: var(--card-shadow-soft);
+}
+
+.undo-toast p {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.undo-toast button {
+  border: 1px solid var(--toggle-border);
+  border-radius: 999px;
+  background: var(--toggle-bg);
+  color: var(--toggle-text);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.26rem 0.58rem;
+  cursor: pointer;
 }
 
 .duration-adjust {
@@ -1386,5 +1518,32 @@ body {
 
   .day-collapse-toggle {
     width: 100%;
+  }
+
+  .undo-toast {
+    right: 0.5rem;
+    left: 0.5rem;
+    bottom: 0.5rem;
+  }
+}
+
+@media print {
+  body[data-print-day-active="true"] .day-card {
+    display: none;
+  }
+
+  body[data-print-day-active="true"] .day-card[data-print-active="true"] {
+    display: block;
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #d0d0d0;
+  }
+
+  body[data-print-day-active="true"] .hero,
+  body[data-print-day-active="true"] .controls,
+  body[data-print-day-active="true"] .airport-card,
+  body[data-print-day-active="true"] .trip-anchor-section,
+  body[data-print-day-active="true"] .undo-toast {
+    display: none;
   }
 }

@@ -32,9 +32,9 @@ const fixedArrivalByDayAndStopId: Record<string, Record<string, string>> = {
   }
 };
 
-const visitDurationStepMins = 15;
 const minVisitDurationMins = 15;
 const maxVisitDurationMins = 240;
+const extraOptionMaxWalkMins = 22;
 
 interface PlacePhoto {
   imageUrl: string;
@@ -53,11 +53,11 @@ interface WikipediaSummaryResponse {
 const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   "westin-seaport": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Convention_and_Exhibition_Center_01.jpg",
+      "https://cache.marriott.com/is/image/marriotts7prod/wi-bosow-daytime-exterior-18224?fit=constrain&wid=1336",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Boston_Convention_and_Exhibition_Center_01.jpg",
-    sourceLabel: "Wikimedia Commons",
-    caption: "Boston Convention and Exhibition Center area near the Westin"
+      "https://www.marriott.com/en-us/hotels/bosow-the-westin-boston-seaport-district/photos/",
+    sourceLabel: "Hotel gallery",
+    caption: "The Westin Boston Seaport District exterior"
   },
   "freedom-trail-walk-tour": {
     imageUrl:
@@ -338,13 +338,36 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
     sourceLabel: "Wikimedia Commons",
     caption: "Fan Pier Harborwalk in the Seaport"
   },
-  "legal-harborside": {
+  "thinktransit-conference": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Legal_Harborside_Floor_Dining_Room_2013.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Convention_and_Exhibition_Center_01.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Legal_Harborside_Floor_Dining_Room_2013.jpg",
+      "https://commons.wikimedia.org/wiki/File:Boston_Convention_and_Exhibition_Center_01.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Legal Harborside dining room"
+    caption: "Boston Convention and Exhibition Center area"
+  },
+  "kanes-downtown": {
+    imageUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+    sourceLabel: "Wikimedia Commons",
+    caption: "Downtown Boston streets near Kane's Donuts"
+  },
+  "verveine-cafe": {
+    imageUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Central_Square,_Cambridge,_Massachusetts.jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:Central_Square,_Cambridge,_Massachusetts.jpg",
+    sourceLabel: "Wikimedia Commons",
+    caption: "Central Square, Cambridge"
+  },
+  "violette-bakers": {
+    imageUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Harvard_Square,_Cambridge,_Massachusetts.jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:Harvard_Square,_Cambridge,_Massachusetts.jpg",
+    sourceLabel: "Wikimedia Commons",
+    caption: "Harvard Square, Cambridge"
   },
   "jennifer-lees": {
     imageUrl:
@@ -371,7 +394,6 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
 };
 
 const wikipediaPhotoTitleById: Partial<Record<string, string>> = {
-  "westin-seaport": "Boston Convention and Exhibition Center",
   "freedom-trail-walk-tour": "Freedom Trail",
   "city-view-bike-tour": "Bluebikes",
   "paul-revere-house": "Paul Revere House",
@@ -409,7 +431,10 @@ const wikipediaPhotoTitleById: Partial<Record<string, string>> = {
   "custom-house-tower-stop": "Custom House Tower",
   "long-wharf-promenade": "Long Wharf (Boston)",
   "fan-pier-park-stop": "South Boston Waterfront",
-  "legal-harborside": "Legal Sea Foods",
+  "thinktransit-conference": "Boston Convention and Exhibition Center",
+  "kanes-downtown": "Financial District, Boston",
+  "verveine-cafe": "Central Square, Cambridge",
+  "violette-bakers": "Harvard Square",
   "jennifer-lees": "Boston Public Market",
   "nebo-cucina": "Fort Point, Boston",
   "mikes-pastry": "North End, Boston"
@@ -457,14 +482,14 @@ function resolvePlacePhoto(
   place: Place,
   wikipediaPhotosById?: Partial<Record<string, PlacePhoto>>
 ): PlacePhoto {
-  const wikipediaPhoto = wikipediaPhotosById?.[place.id];
-  if (wikipediaPhoto) {
-    return wikipediaPhoto;
-  }
-
   const curated = placePhotosById[place.id];
   if (curated) {
     return curated;
+  }
+
+  const wikipediaPhoto = wikipediaPhotosById?.[place.id];
+  if (wikipediaPhoto) {
+    return wikipediaPhoto;
   }
 
   if (!Number.isFinite(place.lat) || !Number.isFinite(place.lng)) {
@@ -480,9 +505,49 @@ function resolvePlacePhoto(
 }
 
 const THEME_STORAGE_KEY = "boston-companion-theme";
+const DAY_ADJUSTMENTS_STORAGE_KEY = "boston-day-adjustments-v1";
+const REMOVED_STOPS_STORAGE_KEY = "boston-removed-stops-v1";
+const ADDED_STOPS_STORAGE_KEY = "boston-added-stops-v1";
+const LOCKED_STOPS_STORAGE_KEY = "boston-locked-stops-v1";
 const defaultBostonMapUrl = "https://www.google.com/maps/search/?api=1&query=Boston%2C+MA";
-const myBostonMapUrl =
-  import.meta.env.VITE_MY_BOSTON_MAP_URL?.trim() || defaultBostonMapUrl;
+function normalizeMyBostonMapUrl(urlValue: string): string {
+  const value = urlValue.trim();
+  if (!value) {
+    return defaultBostonMapUrl;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const isGoogleMapsHost =
+      parsed.hostname === "google.com" ||
+      parsed.hostname === "www.google.com" ||
+      parsed.hostname.endsWith(".google.com");
+    const isMyMapsEditPath = parsed.pathname.startsWith("/maps/d/edit");
+    const mid = parsed.searchParams.get("mid");
+
+    if (isGoogleMapsHost && isMyMapsEditPath && mid) {
+      const viewerUrl = new URL("https://www.google.com/maps/d/viewer");
+      viewerUrl.searchParams.set("mid", mid);
+      const ll = parsed.searchParams.get("ll");
+      const z = parsed.searchParams.get("z");
+      if (ll) {
+        viewerUrl.searchParams.set("ll", ll);
+      }
+      if (z) {
+        viewerUrl.searchParams.set("z", z);
+      }
+      return viewerUrl.toString();
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
+}
+
+const myBostonMapUrl = normalizeMyBostonMapUrl(
+  import.meta.env.VITE_MY_BOSTON_MAP_URL?.trim() || defaultBostonMapUrl
+);
 const hasCustomBostonMap = Boolean(import.meta.env.VITE_MY_BOSTON_MAP_URL?.trim());
 const hotelWebsiteUrl =
   "https://www.marriott.com/en-us/hotels/bosow-the-westin-boston-seaport-district/overview/";
@@ -490,9 +555,34 @@ const placeById = new Map(BOSTON_PLACES.map((place) => [place.id, place]));
 const dayTemplateByTitle = new Map(
   DAY_TEMPLATES.map((template) => [template.title, template])
 );
+const cozyCafeOptionIdsByDayTitle: Record<string, string[]> = {
+  Sunday: ["kanes-downtown", "verveine-cafe", "violette-bakers"],
+  Monday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"],
+  Tuesday: ["kanes-downtown", "verveine-cafe", "violette-bakers"],
+  Wednesday: ["jennifer-lees", "kanes-downtown", "violette-bakers"],
+  Thursday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"]
+};
+const weekdayIndexByDayTitle: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4
+};
+const likelyHoursByPlaceId: Partial<
+  Record<string, { open: string; close: string; days: number[] }>
+> = {
+  "kanes-downtown": { open: "06:30", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "verveine-cafe": { open: "08:00", close: "16:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "violette-bakers": { open: "08:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "jennifer-lees": { open: "08:00", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "nebo-cucina": { open: "16:30", close: "22:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "tea-party-tea-room": { open: "11:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "freedom-trail-walk-tour": { open: "10:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] }
+};
 
 type ThemeMode = "light" | "dark";
-type TransitModePreference = "AUTO" | TravelMode;
+type TransitModePreference = TravelMode;
 type EnergyMode = "SEE_IT_ALL" | "JUST_RIGHT" | "TAKE_IT_SLOW";
 
 interface EnergyModeOption {
@@ -739,13 +829,86 @@ interface AdjustedDayView {
   optionalSuggestion?: Place;
 }
 
+interface UndoToastState {
+  message: string;
+  action: "UNDO_REMOVE" | "UNDO_ADD";
+  dayTitle: string;
+  placeId: string;
+}
+
+function placeToMapQuery(place: Place): string {
+  return place.address?.trim().length
+    ? `${place.name}, ${place.address}`
+    : `${place.lat},${place.lng}`;
+}
+
+function readStoredRecord<T extends Record<string, unknown>>(
+  key: string,
+  defaults: T
+): T {
+  if (typeof window === "undefined") {
+    return defaults;
+  }
+
+  const raw = window.localStorage.getItem(key);
+  if (!raw) {
+    return defaults;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") {
+      return defaults;
+    }
+
+    const merged: Record<string, unknown> = { ...defaults };
+    for (const keyName of Object.keys(defaults)) {
+      if (keyName in parsed) {
+        merged[keyName] = parsed[keyName];
+      }
+    }
+    return merged as T;
+  } catch {
+    return defaults;
+  }
+}
+
 function buildGoogleMapsPlaceUrl(place: Place): string {
   const params = new URLSearchParams({
     api: "1",
-    query: `${place.lat},${place.lng}`
+    query: placeToMapQuery(place)
   });
 
   return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
+function buildGoogleMapsDayRouteUrl(
+  startPlace: Place,
+  stops: ScheduledStop[],
+  transportMode: TransitModePreference
+): string {
+  if (stops.length === 0) {
+    return buildGoogleMapsPlaceUrl(startPlace);
+  }
+
+  const routePoints = stops.map((stop) => placeToMapQuery(stop.place));
+  const origin = placeToMapQuery(startPlace);
+  const destination = placeToMapQuery(HOTEL_BASE);
+  const waypoints = routePoints
+    .filter((point) => point !== origin && point !== destination)
+    .slice(0, 8);
+  const params = new URLSearchParams({
+    api: "1",
+    origin,
+    destination,
+    travelmode: transportMode === "WALK" ? "walking" : "transit"
+  });
+
+  if (waypoints.length > 0) {
+    params.set("waypoints", waypoints.join("|"));
+  }
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 function buildGoogleStreetViewUrl(place: Place): string {
@@ -788,6 +951,27 @@ function minutesToClock(totalMinutes: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+function getLikelyOpenStatus(
+  place: Place,
+  dayTitle: string,
+  visitStartTime: string
+): string | null {
+  const hours = likelyHoursByPlaceId[place.id];
+  const dayIndex = weekdayIndexByDayTitle[dayTitle];
+  if (!hours || dayIndex === undefined || !hours.days.includes(dayIndex)) {
+    return null;
+  }
+
+  const startMins = parseClockToMinutes(visitStartTime);
+  const openMins = parseClockToMinutes(hours.open);
+  const closeMins = parseClockToMinutes(hours.close);
+  if (startMins >= openMins && startMins <= closeMins) {
+    return `Likely open at this time (${toMeridiem(hours.open)}-${toMeridiem(hours.close)}).`;
+  }
+
+  return `May be closed at this time. Fallback: use a nearby add-on option below.`;
+}
+
 function getTransitMinsForMode(
   stop: ScheduledStop,
   transportMode: TransitModePreference
@@ -795,10 +979,6 @@ function getTransitMinsForMode(
   const leg = stop.transitFromPrevious;
   if (!leg) {
     return 0;
-  }
-
-  if (transportMode === "AUTO") {
-    return leg.recommendedMins;
   }
 
   return transportMode === "MBTA" ? leg.mbtaMins : leg.walkMins;
@@ -969,10 +1149,34 @@ function dedupePlacesById(places: Place[]): Place[] {
   return deduped;
 }
 
+function isWithinWalkingDistance(
+  place: Place,
+  anchorPlaces: Place[],
+  maxWalkMins: number
+): boolean {
+  return anchorPlaces.some(
+    (anchorPlace) =>
+      estimateWalkMinutesBetweenPlaces(anchorPlace, place) <= maxWalkMins
+  );
+}
+
+function estimateNearestWalkMinutes(place: Place, anchorPlaces: Place[]): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (const anchorPlace of anchorPlaces) {
+    const mins = estimateWalkMinutesBetweenPlaces(anchorPlace, place);
+    if (mins < best) {
+      best = mins;
+    }
+  }
+
+  return Number.isFinite(best) ? best : 0;
+}
+
 function getAdditionalSightseeingOptions(
   day: DayPlan,
   visibleStops: ScheduledStop[],
-  globallyExcludedSightIds: ReadonlySet<string>
+  globallyExcludedSightIds: ReadonlySet<string>,
+  dayStartPoint: Place
 ): Place[] {
   const dayTemplate = dayTemplateByTitle.get(day.title);
   if (!dayTemplate) {
@@ -980,15 +1184,66 @@ function getAdditionalSightseeingOptions(
   }
 
   const visibleStopIds = new Set(visibleStops.map((stop) => stop.place.id));
-  return dayTemplate.stopIds
+  const walkingAnchors = [dayStartPoint, ...visibleStops.map((stop) => stop.place)];
+  const templateOptions = dayTemplate.stopIds
     .map((id) => placeById.get(id))
     .filter((place): place is Place => Boolean(place))
     .filter(
       (place) =>
         isMajorPlace(place) &&
         !visibleStopIds.has(place.id) &&
-        !globallyExcludedSightIds.has(place.id)
+        !globallyExcludedSightIds.has(place.id) &&
+        isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
     );
+
+  if (templateOptions.length > 0) {
+    return templateOptions;
+  }
+
+  return BOSTON_PLACES.filter(
+    (place) =>
+      isMajorPlace(place) &&
+      !visibleStopIds.has(place.id) &&
+      !globallyExcludedSightIds.has(place.id) &&
+      dayTemplate.targetNeighborhoods.includes(place.neighborhood) &&
+      isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
+  ).slice(0, 4);
+}
+
+function getAdditionalCozyCafeOptions(
+  day: DayPlan,
+  visibleStops: ScheduledStop[],
+  dayStartPoint: Place
+): Place[] {
+  const dayTemplate = dayTemplateByTitle.get(day.title);
+  if (!dayTemplate) {
+    return [];
+  }
+
+  const optionIds = cozyCafeOptionIdsByDayTitle[day.title] ?? [];
+  const visibleStopIds = new Set(visibleStops.map((stop) => stop.place.id));
+  const walkingAnchors = [dayStartPoint, ...visibleStops.map((stop) => stop.place)];
+  const preferredOptions = optionIds
+    .map((id) => placeById.get(id))
+    .filter((place): place is Place => Boolean(place))
+    .filter(
+      (place) =>
+        isGlutenFreeRestaurant(place) &&
+        !visibleStopIds.has(place.id) &&
+        isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
+    );
+
+  if (preferredOptions.length > 0) {
+    return preferredOptions;
+  }
+
+  return BOSTON_PLACES.filter(
+    (place) =>
+      isGlutenFreeRestaurant(place) &&
+      !visibleStopIds.has(place.id) &&
+      dayTemplate.targetNeighborhoods.includes(place.neighborhood) &&
+      isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
+  ).slice(0, 3);
 }
 
 function buildStartPointForDay(day: DayPlan): Place {
@@ -1010,6 +1265,26 @@ function buildClusterLabelFromStops(stops: ScheduledStop[]): string {
     .map(([neighborhood]) => neighborhood);
 
   return topNeighborhoods.join(" + ") || "Seaport";
+}
+
+function buildRainFallbackTip(dayTitle: string): string {
+  const tipByDayTitle: Record<string, string> = {
+    Sunday:
+      "Rain fallback nearby: Boston Tea Party Ships & Museum + Abigail's Tea Room are good indoor anchors in this zone.",
+    Monday:
+      "Rain fallback nearby: Nichols House Museum and Beacon Hill side streets keep this evening mostly sheltered and compact.",
+    Tuesday:
+      "Rain fallback nearby: Old South Meeting House and Boston Public Market are both indoor-friendly near Downtown Crossing.",
+    Wednesday:
+      "Rain fallback nearby: Boston Public Library + Trinity Church interiors keep Back Bay walk time short.",
+    Thursday:
+      "Rain fallback nearby: Boston Athenaeum exterior area plus nearby Downtown indoor stops before airport transfer."
+  };
+
+  return (
+    tipByDayTitle[dayTitle] ??
+    "Rain fallback nearby: switch to an indoor stop in this same neighborhood cluster."
+  );
 }
 
 function pickNearestPlace(
@@ -1333,12 +1608,7 @@ function buildAdjustedDayView(
     const leaveByMins = parseClockToMinutes(leaveByTime);
     const darkByMins = parseClockToMinutes(day.returnToHotel.darkByTime);
     const afterDark = leaveByMins >= darkByMins;
-    const modeInUse: TravelMode =
-      adjustment.transportMode === "AUTO"
-        ? afterDark
-          ? "MBTA"
-          : day.returnToHotel.recommendedMode
-        : adjustment.transportMode;
+    const modeInUse: TravelMode = adjustment.transportMode;
     const travelMins =
       modeInUse === "MBTA" ? day.returnToHotel.mbtaMins : day.returnToHotel.walkMins;
     const arriveByTime = minutesToClock(leaveByMins + travelMins);
@@ -1384,14 +1654,145 @@ function buildAdjustedDayView(
   };
 }
 
-function clampDurationOffset(
-  baseDurationMins: number,
-  nextOffsetMins: number
-): number {
-  const minOffset = minVisitDurationMins - baseDurationMins;
-  const maxOffset = maxVisitDurationMins - baseDurationMins;
+function buildCustomizedDayView(
+  day: DayPlan,
+  adjustedDay: AdjustedDayView,
+  adjustment: DayTimingAdjustment,
+  modeConfig: EnergyModeConfig,
+  lockedPlaces: Place[],
+  addedPlaces: Place[],
+  removedStopIds: ReadonlySet<string>
+): AdjustedDayView {
+  const startPoint = buildStartPointForDay(day);
+  const baseStops = adjustedDay.stops.filter(
+    (stop) => !removedStopIds.has(stop.place.id)
+  );
+  const orderedPlaces = baseStops.map((stop) => stop.place);
 
-  return Math.max(minOffset, Math.min(maxOffset, nextOffsetMins));
+  const requiredPlaces = dedupePlacesById([...lockedPlaces, ...addedPlaces]);
+  for (const requiredPlace of requiredPlaces) {
+    if (orderedPlaces.some((place) => place.id === requiredPlace.id)) {
+      continue;
+    }
+
+    const insertionIndex = findBestInsertionIndex(orderedPlaces, requiredPlace, startPoint);
+    orderedPlaces.splice(insertionIndex, 0, requiredPlace);
+  }
+
+  const sourceStopById = new Map(baseStops.map((stop) => [stop.place.id, stop]));
+  const dayEndLimitMins =
+    parseClockToMinutes(day.endTime) + modeConfig.allowEndExtensionMins;
+  let cursor = parseClockToMinutes(adjustedDay.startTime);
+  let previousPlace = startPoint;
+  const rebuiltStops: ScheduledStop[] = [];
+
+  for (let index = 0; index < orderedPlaces.length; index += 1) {
+    const place = orderedPlaces[index];
+    const sourceStop = sourceStopById.get(place.id);
+    const transit = buildTransitEstimateBetweenPlaces(previousPlace, place);
+    const legMins =
+      adjustment.transportMode === "MBTA" ? transit.mbtaMins : transit.walkMins;
+    const tentativeArrivalMins = cursor + legMins;
+    const fixedArrival = fixedArrivalByDayAndStopId[day.title]?.[place.id];
+    const fixedArrivalMins = fixedArrival
+      ? parseClockToMinutes(fixedArrival)
+      : undefined;
+    const arrivalMins =
+      fixedArrivalMins !== undefined
+        ? Math.max(tentativeArrivalMins, fixedArrivalMins)
+        : tentativeArrivalMins;
+    const visitDurationMins = sourceStop
+      ? sourceStop.visitDurationMins
+      : Math.max(minVisitDurationMins, Math.min(maxVisitDurationMins, place.visitDurationMins));
+    const nextPlace = orderedPlaces[index + 1];
+    const sourceBufferMins = sourceStop?.bufferAfterMins;
+    const computedBufferMins = nextPlace
+      ? isMajorPlace(place) && isMajorPlace(nextPlace)
+        ? modeConfig.bufferBetweenMajorMins
+        : Math.max(8, modeConfig.bufferBetweenMajorMins - 5)
+      : 0;
+    const bufferMins = sourceBufferMins ?? computedBufferMins;
+    const departureWithoutBufferMins = arrivalMins + visitDurationMins;
+    if (departureWithoutBufferMins > dayEndLimitMins) {
+      break;
+    }
+
+    const allowedBufferMins = Math.max(
+      0,
+      Math.min(bufferMins, dayEndLimitMins - departureWithoutBufferMins)
+    );
+    const departureMins = departureWithoutBufferMins + allowedBufferMins;
+
+    rebuiltStops.push({
+      place,
+      arrival: minutesToClock(arrivalMins),
+      departure: minutesToClock(departureMins),
+      visitDurationMins,
+      transitFromPrevious: transit,
+      bufferAfterMins: allowedBufferMins > 0 ? allowedBufferMins : undefined
+    });
+
+    cursor = departureMins;
+    previousPlace = place;
+  }
+
+  const rebuiltEndTime =
+    rebuiltStops.length > 0
+      ? rebuiltStops[rebuiltStops.length - 1].departure
+      : adjustedDay.startTime;
+
+  let returnToHotel: AdjustedReturnToHotelView | undefined;
+  if (day.returnToHotel && rebuiltStops.length > 0) {
+    const finalStop = rebuiltStops[rebuiltStops.length - 1];
+    const leaveByTime = finalStop.departure;
+    const leaveByMins = parseClockToMinutes(leaveByTime);
+    const darkByMins = parseClockToMinutes(day.returnToHotel.darkByTime);
+    const afterDark = leaveByMins >= darkByMins;
+    const modeInUse: TravelMode = adjustment.transportMode;
+    const transitBack = buildTransitEstimateBetweenPlaces(finalStop.place, HOTEL_BASE);
+    const travelMins =
+      modeInUse === "MBTA" ? transitBack.mbtaMins : transitBack.walkMins;
+    const arriveByTime = minutesToClock(leaveByMins + travelMins);
+    const directions =
+      modeInUse === "MBTA"
+        ? buildMbtaDirections(finalStop.place, HOTEL_BASE)
+        : buildWalkDirections(finalStop.place, HOTEL_BASE);
+    const safetyNote = afterDark
+      ? modeInUse === "MBTA"
+        ? "After dark: MBTA is recommended. Stay on active platforms and main streets for the final walk."
+        : "After dark: walking is doable, but switch to MBTA if streets feel too quiet."
+      : "Before dark: keep to main streets and switch to MBTA if weather or energy changes.";
+
+    returnToHotel = {
+      fromPlaceName: finalStop.place.name,
+      leaveByTime,
+      arriveByTime,
+      darkByTime: day.returnToHotel.darkByTime,
+      afterDark,
+      modeInUse,
+      travelMins,
+      walkMins: transitBack.walkMins,
+      mbtaMins: transitBack.mbtaMins,
+      directions,
+      safetyNote
+    };
+  }
+
+  const optionalSuggestion =
+    adjustedDay.optionalSuggestion &&
+    !rebuiltStops.some(
+      (stop) => stop.place.id === adjustedDay.optionalSuggestion?.id
+    )
+      ? adjustedDay.optionalSuggestion
+      : undefined;
+
+  return {
+    ...adjustedDay,
+    endTime: rebuiltEndTime,
+    stops: rebuiltStops,
+    returnToHotel,
+    optionalSuggestion
+  };
 }
 
 function getInitialTheme(): ThemeMode {
@@ -1425,11 +1826,8 @@ function TransitLeg({
   }
 
   const leg = stop.transitFromPrevious;
-  const modeInUse =
-    transportMode === "AUTO" ? leg.recommendedMode : transportMode;
+  const modeInUse = transportMode;
   const modeLabel = modeLabels[modeInUse];
-  const modeFieldLabel =
-    transportMode === "AUTO" ? "Recommended mode" : "Mode in use";
   const travelMins = modeInUse === "MBTA" ? leg.mbtaMins : leg.walkMins;
   const contingencyBufferMins = transferBufferByMode[modeInUse];
   const fallbackMode = modeInUse === "MBTA" ? "Walk" : "MBTA";
@@ -1437,7 +1835,7 @@ function TransitLeg({
     modeInUse === "MBTA" ? leg.walkMins : leg.mbtaMins;
   const destinationStations = formatNearbyStations(stop.place);
   const directions =
-    transportMode === "AUTO" || modeInUse === leg.recommendedMode
+    modeInUse === leg.recommendedMode
       ? leg.directions
       : modeInUse === "MBTA"
         ? `Use MBTA for this leg and confirm the best line and next departure in Google Maps.${
@@ -1465,7 +1863,7 @@ function TransitLeg({
           <strong>{toMeridiem(stop.arrival)}</strong>
         </p>
         <p>
-          <span>{modeFieldLabel}</span>
+          <span>Mode in use</span>
           <strong>{modeLabel}</strong>
         </p>
         <p>
@@ -1494,7 +1892,7 @@ function TransitLeg({
         Build in a {contingencyBufferMins}-minute cushion before this transfer when
         possible.
       </p>
-      {transportMode !== "AUTO" ? (
+      {modeInUse !== leg.recommendedMode ? (
         <p className="transit-override-note">
           Manual mode override is active for this day.
         </p>
@@ -1518,19 +1916,21 @@ function App() {
   );
   const [dayAdjustments, setDayAdjustments] = useState<
     Record<string, DayTimingAdjustment>
-  >(() =>
-    Object.fromEntries(
+  >(() => {
+    const defaults = Object.fromEntries(
       itinerary.dayPlans.map((day) => [
         day.title,
         {
           startTime: day.startTime,
-          transportMode: "AUTO",
+          transportMode: "WALK",
           energyMode: defaultEnergyModeForDay(day),
           durationOffsetByStopIndex: {}
         }
       ])
-    )
-  );
+    ) as Record<string, DayTimingAdjustment>;
+
+    return readStoredRecord(DAY_ADJUSTMENTS_STORAGE_KEY, defaults);
+  });
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, false]))
   );
@@ -1540,6 +1940,34 @@ function App() {
   const [collapsedSightseeingCards, setCollapsedSightseeingCards] = useState<
     Record<string, boolean>
   >({});
+  const [collapsedExtraOptionCards, setCollapsedExtraOptionCards] = useState<
+    Record<string, boolean>
+  >({});
+  const [removedStopIdsByDay, setRemovedStopIdsByDay] = useState<
+    Record<string, string[]>
+  >(() => {
+    const defaults = Object.fromEntries(
+      itinerary.dayPlans.map((day) => [day.title, []])
+    ) as Record<string, string[]>;
+    return readStoredRecord(REMOVED_STOPS_STORAGE_KEY, defaults);
+  });
+  const [addedStopIdsByDay, setAddedStopIdsByDay] = useState<Record<string, string[]>>(
+    () => {
+      const defaults = Object.fromEntries(
+        itinerary.dayPlans.map((day) => [day.title, []])
+      ) as Record<string, string[]>;
+      return readStoredRecord(ADDED_STOPS_STORAGE_KEY, defaults);
+    }
+  );
+  const [lockedStopIdsByDay, setLockedStopIdsByDay] = useState<
+    Record<string, string[]>
+  >(() => {
+    const defaults = Object.fromEntries(
+      itinerary.dayPlans.map((day) => [day.title, []])
+    ) as Record<string, string[]>;
+    return readStoredRecord(LOCKED_STOPS_STORAGE_KEY, defaults);
+  });
+  const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
   const [transitHiddenByDay, setTransitHiddenByDay] = useState<Record<string, boolean>>(
     () => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, true]))
   );
@@ -1612,6 +2040,106 @@ function App() {
         current === dayTitle ? null : current
       );
     }, 260);
+  }
+
+  function addPlaceToDay(dayTitle: string, place: Place) {
+    const placeId = place.id;
+    setAddedStopIdsByDay((previous) => {
+      const current = previous[dayTitle] ?? [];
+      if (current.includes(placeId)) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [dayTitle]: [...current, placeId]
+      };
+    });
+    setRemovedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+    setUndoToast({
+      message: `Added ${place.name}.`,
+      action: "UNDO_ADD",
+      dayTitle,
+      placeId
+    });
+  }
+
+  function removePlaceFromDay(dayTitle: string, place: Place) {
+    const placeId = place.id;
+    setRemovedStopIdsByDay((previous) => {
+      const current = previous[dayTitle] ?? [];
+      if (current.includes(placeId)) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [dayTitle]: [...current, placeId]
+      };
+    });
+    setAddedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+    setUndoToast({
+      message: `Removed ${place.name}.`,
+      action: "UNDO_REMOVE",
+      dayTitle,
+      placeId
+    });
+  }
+
+  function removeAddedPlaceForDay(dayTitle: string, placeId: string) {
+    setAddedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+  }
+
+  function restorePlaceForDay(dayTitle: string, placeId: string) {
+    setRemovedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+  }
+
+  function toggleLockForDayStop(dayTitle: string, place: Place) {
+    const placeId = place.id;
+    setLockedStopIdsByDay((previous) => {
+      const current = previous[dayTitle] ?? [];
+      const isLocked = current.includes(placeId);
+      if (isLocked) {
+        return {
+          ...previous,
+          [dayTitle]: current.filter((id) => id !== placeId)
+        };
+      }
+
+      return {
+        ...previous,
+        [dayTitle]: [...current, placeId]
+      };
+    });
+    setRemovedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+  }
+
+  function handleUndoToast() {
+    if (!undoToast) {
+      return;
+    }
+
+    if (undoToast.action === "UNDO_REMOVE") {
+      restorePlaceForDay(undoToast.dayTitle, undoToast.placeId);
+    } else {
+      removeAddedPlaceForDay(undoToast.dayTitle, undoToast.placeId);
+    }
+    setUndoToast(null);
   }
 
   useEffect(() => {
@@ -1691,6 +2219,45 @@ function App() {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      DAY_ADJUSTMENTS_STORAGE_KEY,
+      JSON.stringify(dayAdjustments)
+    );
+  }, [dayAdjustments]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      REMOVED_STOPS_STORAGE_KEY,
+      JSON.stringify(removedStopIdsByDay)
+    );
+  }, [removedStopIdsByDay]);
+
+  useEffect(() => {
+    window.localStorage.setItem(ADDED_STOPS_STORAGE_KEY, JSON.stringify(addedStopIdsByDay));
+  }, [addedStopIdsByDay]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      LOCKED_STOPS_STORAGE_KEY,
+      JSON.stringify(lockedStopIdsByDay)
+    );
+  }, [lockedStopIdsByDay]);
+
+  useEffect(() => {
+    if (!undoToast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setUndoToast(null);
+    }, 5200);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [undoToast]);
 
   useEffect(() => {
     function closeMenuOnOutsideClick(event: MouseEvent) {
@@ -1777,7 +2344,7 @@ function App() {
           const sectionId = `day-${day.title.toLowerCase()}-content`;
           const adjustment = dayAdjustments[day.title] ?? {
             startTime: day.startTime,
-            transportMode: "AUTO" as const,
+            transportMode: "WALK" as const,
             energyMode: defaultEnergyModeForDay(day),
             durationOffsetByStopIndex: {}
           };
@@ -1787,17 +2354,62 @@ function App() {
             adjustment.energyMode,
             glutenFreeCatalog
           );
-          const adjustedDay = buildAdjustedDayView(
+          const baseAdjustedDay = buildAdjustedDayView(
             preparedDay.plan,
             adjustment,
             modeConfig,
             preparedDay.optionalSuggestion
           );
+          const lockedStopIds = lockedStopIdsByDay[day.title] ?? [];
+          const lockedStopIdSet = new Set(lockedStopIds);
+          const removedStopIds = new Set(
+            (removedStopIdsByDay[day.title] ?? []).filter(
+              (stopId) => !lockedStopIdSet.has(stopId)
+            )
+          );
+          const lockedPlaces = lockedStopIds
+            .map((placeId) => placeById.get(placeId))
+            .filter((place): place is Place => Boolean(place));
+          const addedPlaces = (addedStopIdsByDay[day.title] ?? [])
+            .map((placeId) => placeById.get(placeId))
+            .filter((place): place is Place => Boolean(place));
+          const adjustedDay = buildCustomizedDayView(
+            preparedDay.plan,
+            baseAdjustedDay,
+            adjustment,
+            modeConfig,
+            lockedPlaces,
+            addedPlaces,
+            removedStopIds
+          );
+          const dayStartPoint = buildStartPointForDay(preparedDay.plan);
+          const dayRouteUrl = buildGoogleMapsDayRouteUrl(
+            dayStartPoint,
+            adjustedDay.stops,
+            adjustment.transportMode
+          );
+          const dayWalkTotalMins = adjustedDay.stops.reduce(
+            (total, stop) => total + (stop.transitFromPrevious?.walkMins ?? 0),
+            0
+          );
+          const dayMbtaTotalMins = adjustedDay.stops.reduce(
+            (total, stop) => total + (stop.transitFromPrevious?.mbtaMins ?? 0),
+            0
+          );
           const additionalSightOptions = getAdditionalSightseeingOptions(
             day,
             adjustedDay.stops,
-            globallyExcludedSightOptionIds
+            globallyExcludedSightOptionIds,
+            dayStartPoint
           );
+          const additionalCozyCafeOptions = getAdditionalCozyCafeOptions(
+            day,
+            adjustedDay.stops,
+            dayStartPoint
+          );
+          const removedPlaces = [...removedStopIds]
+            .map((id) => placeById.get(id))
+            .filter((place): place is Place => Boolean(place));
           const currentEnergyMode =
             energyModeOptions.find((option) => option.mode === adjustment.energyMode) ??
             energyModeOptions[1];
@@ -1825,6 +2437,8 @@ function App() {
                     </span>
                     <span>Cluster: {preparedDay.plan.clusterLabel}</span>
                     <span>Pace: {currentEnergyMode.label}</span>
+                    <span>Walk total: {dayWalkTotalMins} min</span>
+                    <span>MBTA total: {dayMbtaTotalMins} min</span>
                   </div>
                   <div className="day-header-controls">
                     <div className="day-more-menu-wrap">
@@ -1886,6 +2500,14 @@ function App() {
                     >
                       {isTransitHidden ? "Show transit cards" : "Hide transit cards"}
                     </button>
+                    <a
+                      className="day-collapse-toggle"
+                      href={dayRouteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open full day map
+                    </a>
                     <button
                       type="button"
                       className="day-collapse-toggle"
@@ -1907,8 +2529,8 @@ function App() {
 
               {isCollapsed ? (
                 <p className="collapsed-summary">
-                  {preparedDay.plan.stops.length} stop
-                  {preparedDay.plan.stops.length === 1 ? "" : "s"} planned.
+                  {adjustedDay.stops.length} stop
+                  {adjustedDay.stops.length === 1 ? "" : "s"} planned.
                 </p>
               ) : (
                 <div
@@ -1951,7 +2573,6 @@ function App() {
                           }))
                         }
                       >
-                        <option value="AUTO">Auto (recommended)</option>
                         <option value="MBTA">MBTA</option>
                         <option value="WALK">Walk</option>
                       </select>
@@ -2057,17 +2678,12 @@ function App() {
                         const stopCardId = `${day.title}-${stop.place.id}-${stop.arrival}`;
                         const isSightseeingCardCollapsed =
                           collapsedSightseeingCards[stopCardId] ?? false;
-                        const baseVisitDurationMins =
-                          preparedDay.plan.stops[stopIndex]?.visitDurationMins ??
-                          stop.visitDurationMins;
-                        const durationOffsetMins =
-                          adjustment.durationOffsetByStopIndex[stopIndex] ?? 0;
-                        const canDecreaseDuration =
-                          baseVisitDurationMins + durationOffsetMins >
-                          minVisitDurationMins;
-                        const canIncreaseDuration =
-                          baseVisitDurationMins + durationOffsetMins <
-                          maxVisitDurationMins;
+                        const isStopLocked = lockedStopIdSet.has(stop.place.id);
+                        const likelyOpenStatus = getLikelyOpenStatus(
+                          stop.place,
+                          day.title,
+                          stop.arrival
+                        );
 
                         return (
                           <li className="stop-item" key={`${stop.place.id}-${stop.arrival}`}>
@@ -2084,107 +2700,51 @@ function App() {
                                 <p className="segment-card-label sightseeing-card-label">
                                   Sightseeing card
                                 </p>
-                                <button
-                                  type="button"
-                                  className="stop-card-toggle"
-                                  onClick={() =>
-                                    setCollapsedSightseeingCards((previous) => ({
-                                      ...previous,
-                                      [stopCardId]: !isSightseeingCardCollapsed
-                                    }))
-                                  }
-                                  aria-expanded={!isSightseeingCardCollapsed}
-                                >
-                                  {isSightseeingCardCollapsed ? "Expand card" : "Collapse card"}
-                                </button>
+                                <div className="stop-card-actions">
+                                  <button
+                                    type="button"
+                                    className="stop-card-action-btn stop-card-add-btn"
+                                    onClick={() => toggleLockForDayStop(day.title, stop.place)}
+                                  >
+                                    {isStopLocked ? "Unlock stop" : "Lock stop"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="stop-card-action-btn stop-card-remove-btn"
+                                    onClick={() => removePlaceFromDay(day.title, stop.place)}
+                                    disabled={isStopLocked}
+                                  >
+                                    Remove card
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="stop-card-toggle"
+                                    onClick={() =>
+                                      setCollapsedSightseeingCards((previous) => ({
+                                        ...previous,
+                                        [stopCardId]: !isSightseeingCardCollapsed
+                                      }))
+                                    }
+                                    aria-expanded={!isSightseeingCardCollapsed}
+                                  >
+                                    {isSightseeingCardCollapsed
+                                      ? "Expand card"
+                                      : "Collapse card"}
+                                  </button>
+                                </div>
                               </div>
                               <div className="stop-time-row">
                                 <p className="stop-time">
                                   {toMeridiem(stop.arrival)} - {toMeridiem(stop.departure)}
                                 </p>
-                                {!isSightseeingCardCollapsed ? (
-                                  <div
-                                    className="duration-adjust"
-                                    role="group"
-                                    aria-label={`Adjust time at ${stop.place.name}`}
-                                  >
-                                    <button
-                                      type="button"
-                                      className="duration-adjust-btn"
-                                      onClick={() => {
-                                        setDayAdjustments((previous) => {
-                                          const previousDayAdjustment =
-                                            previous[day.title] ?? adjustment;
-                                          const currentOffset =
-                                            previousDayAdjustment.durationOffsetByStopIndex[
-                                              stopIndex
-                                            ] ?? 0;
-                                          const nextOffset =
-                                            clampDurationOffset(
-                                              baseVisitDurationMins,
-                                              currentOffset - visitDurationStepMins
-                                            );
-
-                                          return {
-                                            ...previous,
-                                            [day.title]: {
-                                              ...previousDayAdjustment,
-                                              durationOffsetByStopIndex: {
-                                                ...previousDayAdjustment.durationOffsetByStopIndex,
-                                                [stopIndex]: nextOffset
-                                              }
-                                            }
-                                          };
-                                        });
-                                      }}
-                                      aria-label={`Spend ${visitDurationStepMins} fewer minutes at ${stop.place.name}`}
-                                      disabled={!canDecreaseDuration}
-                                    >
-                                      -{visitDurationStepMins}m
-                                    </button>
-                                    <p className="duration-adjust-value">
-                                      {durationOffsetMins === 0
-                                        ? "Default"
-                                        : `${durationOffsetMins > 0 ? "+" : ""}${durationOffsetMins}m`}
-                                    </p>
-                                    <button
-                                      type="button"
-                                      className="duration-adjust-btn"
-                                      onClick={() => {
-                                        setDayAdjustments((previous) => {
-                                          const previousDayAdjustment =
-                                            previous[day.title] ?? adjustment;
-                                          const currentOffset =
-                                            previousDayAdjustment.durationOffsetByStopIndex[
-                                              stopIndex
-                                            ] ?? 0;
-                                          const nextOffset =
-                                            clampDurationOffset(
-                                              baseVisitDurationMins,
-                                              currentOffset + visitDurationStepMins
-                                            );
-
-                                          return {
-                                            ...previous,
-                                            [day.title]: {
-                                              ...previousDayAdjustment,
-                                              durationOffsetByStopIndex: {
-                                                ...previousDayAdjustment.durationOffsetByStopIndex,
-                                                [stopIndex]: nextOffset
-                                              }
-                                            }
-                                          };
-                                        });
-                                      }}
-                                      aria-label={`Spend ${visitDurationStepMins} more minutes at ${stop.place.name}`}
-                                      disabled={!canIncreaseDuration}
-                                    >
-                                      +{visitDurationStepMins}m
-                                    </button>
-                                  </div>
-                                ) : null}
                               </div>
                               <h3>{stop.place.name}</h3>
+                              {stop.place.priceLevel ? (
+                                <p className="price-level">Cost: {stop.place.priceLevel}</p>
+                              ) : null}
+                              {stop.place.address ? (
+                                <p className="stop-address">{stop.place.address}</p>
+                              ) : null}
                               {isSightseeingCardCollapsed ? (
                                 <p className="stop-card-collapsed-summary">
                                   Card collapsed. Expand to view description, photos, and links.
@@ -2192,6 +2752,9 @@ function App() {
                               ) : (
                                 <>
                                   <p>{stop.place.description}</p>
+                                  {likelyOpenStatus ? (
+                                    <p className="open-status-note">{likelyOpenStatus}</p>
+                                  ) : null}
                                   {stop.place.soloDiningNote ? (
                                     <p className="solo-dining-note">
                                       Solo dining note: {stop.place.soloDiningNote}
@@ -2292,7 +2855,7 @@ function App() {
                   {additionalSightOptions.length > 0 ? (
                     <div className="additional-options-section">
                       <p className="segment-card-label sightseeing-card-label">
-                        Additional sightseeing options
+                        Additional nearby sightseeing options
                       </p>
                       <ol className="stop-list additional-options-list">
                         {additionalSightOptions.map((place) => {
@@ -2300,6 +2863,13 @@ function App() {
                             place,
                             wikipediaPhotosById
                           );
+                          const optionCardId = `${day.title}-option-${place.id}`;
+                          const isOptionCollapsed =
+                            collapsedExtraOptionCards[optionCardId] ?? true;
+                          const walkMinsFromCluster = estimateNearestWalkMinutes(place, [
+                            dayStartPoint,
+                            ...adjustedDay.stops.map((stop) => stop.place)
+                          ]);
                           const nearbyStations = formatNearbyStations(place);
                           const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(place);
                           const googleStreetViewUrl = buildGoogleStreetViewUrl(place);
@@ -2307,31 +2877,108 @@ function App() {
                           return (
                             <li className="stop-item" key={`${day.title}-${place.id}`}>
                               <div className="stop-card additional-sight-card">
-                                <p className="stop-time">Flexible option</p>
-                                <h3>{place.name}</h3>
-                                <p>{place.description}</p>
-                                <div className="stop-photo-block">
-                                  <img
-                                    className="stop-photo-img"
-                                    src={placePhoto.imageUrl}
-                                    alt={`${placePhoto.caption}, Boston`}
-                                    loading="lazy"
-                                    onError={({ currentTarget }) => {
-                                      currentTarget.onerror = null;
-                                      currentTarget.src = buildFallbackImageUrlForPlace(
-                                        place
-                                      );
-                                    }}
-                                  />
-                                  <a
-                                    className="stop-photo-source"
-                                    href={placePhoto.sourceUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    Photo source: {placePhoto.sourceLabel}
-                                  </a>
+                                <div className="stop-card-header">
+                                  <p className="segment-card-label sightseeing-card-label">
+                                    Add-on option
+                                  </p>
+                                  <div className="stop-card-actions">
+                                    <button
+                                      type="button"
+                                      className="stop-card-action-btn stop-card-add-btn"
+                                      onClick={() => addPlaceToDay(day.title, place)}
+                                    >
+                                      Add to day
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="stop-card-toggle"
+                                      onClick={() =>
+                                        setCollapsedExtraOptionCards((previous) => ({
+                                          ...previous,
+                                          [optionCardId]: !isOptionCollapsed
+                                        }))
+                                      }
+                                      aria-expanded={!isOptionCollapsed}
+                                    >
+                                      {isOptionCollapsed ? "Expand card" : "Collapse card"}
+                                    </button>
+                                  </div>
                                 </div>
+                                <p className="stop-time">
+                                  Approx walk from today's cluster: {walkMinsFromCluster} min
+                                </p>
+                                <h3>{place.name}</h3>
+                                {place.priceLevel ? (
+                                  <p className="price-level">Cost: {place.priceLevel}</p>
+                                ) : null}
+                                {place.address ? (
+                                  <p className="stop-address">{place.address}</p>
+                                ) : null}
+                                {isOptionCollapsed ? (
+                                  <p className="stop-card-collapsed-summary">
+                                    Collapsed add-on card. Expand to view details, photo, and
+                                    links.
+                                  </p>
+                                ) : (
+                                  <>
+                                    <p>{place.description}</p>
+                                    <div className="stop-photo-block">
+                                      <img
+                                        className="stop-photo-img"
+                                        src={placePhoto.imageUrl}
+                                        alt={`${placePhoto.caption}, Boston`}
+                                        loading="lazy"
+                                        onError={({ currentTarget }) => {
+                                          currentTarget.onerror = null;
+                                          currentTarget.src = buildFallbackImageUrlForPlace(
+                                            place
+                                          );
+                                        }}
+                                      />
+                                      <a
+                                        className="stop-photo-source"
+                                        href={placePhoto.sourceUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Photo source: {placePhoto.sourceLabel}
+                                      </a>
+                                    </div>
+                                    {place.isFreedomTrailStop ? (
+                                      <p className="freedom-trail-note">Freedom Trail stop</p>
+                                    ) : null}
+                                    <div className="stop-map">
+                                      <div className="map-links">
+                                        <a
+                                          className="map-open-link"
+                                          href={googleMapsPlaceUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          Open in Google Maps
+                                        </a>
+                                        <a
+                                          className="map-street-link"
+                                          href={googleStreetViewUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          Open Street View
+                                        </a>
+                                        {place.infoUrl ? (
+                                          <a
+                                            className="map-info-link"
+                                            href={place.infoUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            {place.infoLabel ?? "More info"}
+                                          </a>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
                                 <p className="stop-foot">
                                   Neighborhood: {place.neighborhood} | Suggested visit{" "}
                                   {place.visitDurationMins} min
@@ -2339,39 +2986,6 @@ function App() {
                                 {nearbyStations ? (
                                   <p className="stop-foot">Nearest T: {nearbyStations}</p>
                                 ) : null}
-                                {place.isFreedomTrailStop ? (
-                                  <p className="freedom-trail-note">Freedom Trail stop</p>
-                                ) : null}
-                                <div className="stop-map">
-                                  <div className="map-links">
-                                    <a
-                                      className="map-open-link"
-                                      href={googleMapsPlaceUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      Open in Google Maps
-                                    </a>
-                                    <a
-                                      className="map-street-link"
-                                      href={googleStreetViewUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      Open Street View
-                                    </a>
-                                    {place.infoUrl ? (
-                                      <a
-                                        className="map-info-link"
-                                        href={place.infoUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        {place.infoLabel ?? "More info"}
-                                      </a>
-                                    ) : null}
-                                  </div>
-                                </div>
                               </div>
                             </li>
                           );
@@ -2379,6 +2993,163 @@ function App() {
                       </ol>
                     </div>
                   ) : null}
+
+                  {additionalCozyCafeOptions.length > 0 ? (
+                    <div className="additional-options-section">
+                      <p className="segment-card-label sightseeing-card-label">
+                        Additional nearby cozy cafe options (GF-safe)
+                      </p>
+                      <ol className="stop-list additional-options-list">
+                        {additionalCozyCafeOptions.map((place) => {
+                          const placePhoto = resolvePlacePhoto(
+                            place,
+                            wikipediaPhotosById
+                          );
+                          const optionCardId = `${day.title}-option-${place.id}`;
+                          const isOptionCollapsed =
+                            collapsedExtraOptionCards[optionCardId] ?? true;
+                          const walkMinsFromCluster = estimateNearestWalkMinutes(place, [
+                            dayStartPoint,
+                            ...adjustedDay.stops.map((stop) => stop.place)
+                          ]);
+                          const nearbyStations = formatNearbyStations(place);
+                          const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(place);
+
+                          return (
+                            <li className="stop-item" key={`${day.title}-cafe-${place.id}`}>
+                              <div className="stop-card additional-sight-card">
+                                <div className="stop-card-header">
+                                  <p className="segment-card-label sightseeing-card-label">
+                                    Add-on option
+                                  </p>
+                                  <div className="stop-card-actions">
+                                    <button
+                                      type="button"
+                                      className="stop-card-action-btn stop-card-add-btn"
+                                      onClick={() => addPlaceToDay(day.title, place)}
+                                    >
+                                      Add to day
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="stop-card-toggle"
+                                      onClick={() =>
+                                        setCollapsedExtraOptionCards((previous) => ({
+                                          ...previous,
+                                          [optionCardId]: !isOptionCollapsed
+                                        }))
+                                      }
+                                      aria-expanded={!isOptionCollapsed}
+                                    >
+                                      {isOptionCollapsed ? "Expand card" : "Collapse card"}
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="stop-time">
+                                  Approx walk from today's cluster: {walkMinsFromCluster} min
+                                </p>
+                                <h3>{place.name}</h3>
+                                {place.priceLevel ? (
+                                  <p className="price-level">Cost: {place.priceLevel}</p>
+                                ) : null}
+                                {place.address ? (
+                                  <p className="stop-address">{place.address}</p>
+                                ) : null}
+                                {isOptionCollapsed ? (
+                                  <p className="stop-card-collapsed-summary">
+                                    Collapsed add-on card. Expand to view details, photo, and
+                                    links.
+                                  </p>
+                                ) : (
+                                  <>
+                                    <p>{place.description}</p>
+                                    {place.soloDiningNote ? (
+                                      <p className="solo-dining-note">
+                                        Solo dining note: {place.soloDiningNote}
+                                      </p>
+                                    ) : null}
+                                    <div className="stop-photo-block">
+                                      <img
+                                        className="stop-photo-img"
+                                        src={placePhoto.imageUrl}
+                                        alt={`${placePhoto.caption}, Boston`}
+                                        loading="lazy"
+                                        onError={({ currentTarget }) => {
+                                          currentTarget.onerror = null;
+                                          currentTarget.src = buildFallbackImageUrlForPlace(
+                                            place
+                                          );
+                                        }}
+                                      />
+                                      <a
+                                        className="stop-photo-source"
+                                        href={placePhoto.sourceUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Photo source: {placePhoto.sourceLabel}
+                                      </a>
+                                    </div>
+                                    <div className="stop-map">
+                                      <div className="map-links">
+                                        <a
+                                          className="map-open-link"
+                                          href={googleMapsPlaceUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          Open in Google Maps
+                                        </a>
+                                        {place.infoUrl ? (
+                                          <a
+                                            className="map-info-link"
+                                            href={place.infoUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            {place.infoLabel ?? "More info"}
+                                          </a>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                                <p className="stop-foot">
+                                  Neighborhood: {place.neighborhood} | Suggested visit{" "}
+                                  {place.visitDurationMins} min
+                                </p>
+                                {nearbyStations ? (
+                                  <p className="stop-foot">Nearest T: {nearbyStations}</p>
+                                ) : null}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  ) : null}
+
+                  {removedPlaces.length > 0 ? (
+                    <div className="removed-cards-section">
+                      <p className="segment-card-label transit-card-label">
+                        Removed cards
+                      </p>
+                      <div className="removed-cards-list">
+                        {removedPlaces.map((place) => (
+                          <button
+                            type="button"
+                            key={`${day.title}-removed-${place.id}`}
+                            className="removed-card-chip"
+                            onClick={() => restorePlaceForDay(day.title, place.id)}
+                          >
+                            Restore: {place.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <p className="weather-tip">{buildRainFallbackTip(day.title)}</p>
 
                   {isTransitHidden ? (
                     <p className="transit-hidden-note">
@@ -2547,6 +3318,14 @@ function App() {
           </div>
         )}
       </section>
+      {undoToast ? (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <p>{undoToast.message}</p>
+          <button type="button" onClick={handleUndoToast}>
+            Undo
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

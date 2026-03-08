@@ -14,6 +14,8 @@ export interface Place {
   name: string;
   category: PlaceCategory;
   neighborhood: string;
+  address?: string;
+  priceLevel?: "$" | "$$" | "$$$";
   lat: number;
   lng: number;
   visitDurationMins: number;
