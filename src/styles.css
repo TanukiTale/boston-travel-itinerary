@@ -1526,24 +1526,3 @@ body {
     bottom: 0.5rem;
   }
 }
-
-@media print {
-  body[data-print-day-active="true"] .day-card {
-    display: none;
-  }
-
-  body[data-print-day-active="true"] .day-card[data-print-active="true"] {
-    display: block;
-    break-inside: avoid;
-    box-shadow: none;
-    border: 1px solid #d0d0d0;
-  }
-
-  body[data-print-day-active="true"] .hero,
-  body[data-print-day-active="true"] .controls,
-  body[data-print-day-active="true"] .airport-card,
-  body[data-print-day-active="true"] .trip-anchor-section,
-  body[data-print-day-active="true"] .undo-toast {
-    display: none;
-  }
-}

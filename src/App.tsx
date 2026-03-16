@@ -836,6 +836,30 @@ interface UndoToastState {
   placeId: string;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
+function isStandaloneDisplayMode(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
+function isIosDevice(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
 function placeToMapQuery(place: Place): string {
   return place.address?.trim().length
     ? `${place.name}, ${place.address}`
@@ -1968,6 +1992,12 @@ function App() {
     return readStoredRecord(LOCKED_STOPS_STORAGE_KEY, defaults);
   });
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandaloneInstalled, setIsStandaloneInstalled] = useState<boolean>(() =>
+    isStandaloneDisplayMode()
+  );
+  const [installMessage, setInstallMessage] = useState<string | null>(null);
   const [transitHiddenByDay, setTransitHiddenByDay] = useState<Record<string, boolean>>(
     () => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, true]))
   );
@@ -2142,6 +2172,23 @@ function App() {
     setUndoToast(null);
   }
 
+  async function handleInstallApp() {
+    if (!deferredInstallPrompt) {
+      setInstallMessage("Install prompt is not available on this browser yet.");
+      return;
+    }
+
+    await deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice.outcome === "accepted") {
+      setInstallMessage("Install started. The app icon should appear on your phone.");
+    } else {
+      setInstallMessage("Install was dismissed.");
+    }
+
+    setDeferredInstallPrompt(null);
+  }
+
   useEffect(() => {
     let cancelled = false;
     const abortController = new AbortController();
@@ -2260,6 +2307,36 @@ function App() {
   }, [undoToast]);
 
   useEffect(() => {
+    function onBeforeInstallPrompt(event: Event) {
+      const installEvent = event as BeforeInstallPromptEvent;
+      installEvent.preventDefault();
+      setDeferredInstallPrompt(installEvent);
+      setInstallMessage(null);
+    }
+
+    function onAppInstalled() {
+      setDeferredInstallPrompt(null);
+      setIsStandaloneInstalled(true);
+      setInstallMessage("Installed. You can launch this from your home screen.");
+    }
+
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    function onDisplayModeChange() {
+      setIsStandaloneInstalled(isStandaloneDisplayMode());
+    }
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    mediaQuery.addEventListener("change", onDisplayModeChange);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+      mediaQuery.removeEventListener("change", onDisplayModeChange);
+    };
+  }, []);
+
+  useEffect(() => {
     function closeMenuOnOutsideClick(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Element)) {
@@ -2334,6 +2411,36 @@ function App() {
               ? "Using your custom Google My Maps link."
               : "Set VITE_MY_BOSTON_MAP_URL in .env.local to use your custom My Maps link."}
           </p>
+        </div>
+        <div className="control install-app-control">
+          <span>Install App</span>
+          {isStandaloneInstalled ? (
+            <p className="flight-line">Installed and ready on home screen.</p>
+          ) : deferredInstallPrompt ? (
+            <>
+              <button
+                type="button"
+                className="hero-action-btn"
+                onClick={() => {
+                  void handleInstallApp();
+                }}
+              >
+                Install on this phone
+              </button>
+              <p className="flight-line">
+                Tap install, then launch from your home screen.
+              </p>
+            </>
+          ) : isIosDevice() ? (
+            <p className="flight-line">
+              iPhone/iPad: tap Share, then Add to Home Screen.
+            </p>
+          ) : (
+            <p className="flight-line">
+              Open in Chrome/Edge on phone to get the install prompt.
+            </p>
+          )}
+          {installMessage ? <p className="flight-line">{installMessage}</p> : null}
         </div>
       </section>
 
