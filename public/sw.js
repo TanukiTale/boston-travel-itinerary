@@ -1,4 +1,4 @@
-const CACHE_NAME = "boston-time-v1";
+const CACHE_NAME = "boston-time-v2";
 const SW_PATH = self.location.pathname;
 const BASE_PATH = SW_PATH.endsWith("/sw.js")
   ? SW_PATH.slice(0, -"/sw.js".length)
@@ -7,9 +7,9 @@ const APP_SHELL = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
   `${BASE_PATH}/manifest.webmanifest`,
-  `${BASE_PATH}/icons/icon-192.png`,
-  `${BASE_PATH}/icons/icon-512.png`,
-  `${BASE_PATH}/icons/icon.svg`
+  `${BASE_PATH}/icons/icon-192-v2.png`,
+  `${BASE_PATH}/icons/icon-512-v2.png`,
+  `${BASE_PATH}/icons/icon-v2.svg`
 ];
 
 self.addEventListener("install", (event) => {
