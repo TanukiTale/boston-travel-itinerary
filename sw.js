@@ -1,4 +1,4 @@
-const CACHE_NAME = "boston-time-v2";
+const CACHE_NAME = "boston-time-v3";
 const SW_PATH = self.location.pathname;
 const BASE_PATH = SW_PATH.endsWith("/sw.js")
   ? SW_PATH.slice(0, -"/sw.js".length)
@@ -55,6 +55,35 @@ self.addEventListener("fetch", (event) => {
           (await caches.match(`${BASE_PATH}/`))
         );
       })
+    );
+    return;
+  }
+
+  if (
+    request.destination === "script" ||
+    request.destination === "style" ||
+    request.destination === "worker"
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseCopy = networkResponse.clone();
+            void caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(request, responseCopy));
+          }
+
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) {
+            return cached;
+          }
+
+          return new Response("", { status: 503, statusText: "Asset unavailable" });
+        })
     );
     return;
   }
