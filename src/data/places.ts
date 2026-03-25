@@ -749,46 +749,64 @@ export const MBTA_OVERRIDES: Record<string, MbtaOverride> = {
   "westin-seaport->freedom-trail-walk-tour": {
     minutes: 24,
     directions:
-      "Walk to Courthouse Station, take the Silver Line to South Station, then continue one stop to Park Street for the Freedom Trail start."
+      "Walk to Courthouse Station, take the Silver Line to South Station, then continue one stop to Park Street for the Freedom Trail start.",
+    reverseDirections:
+      "From Park Street, ride toward South Station, transfer to the Silver Line outbound, and exit at Courthouse/World Trade Center for a short walk to the Westin."
   },
   "westin-seaport->city-view-bike-tour": {
     minutes: 18,
     directions:
-      "Walk to World Trade Center Station, take the Silver Line inbound to South Station, then continue on foot toward Atlantic Ave for the bike-tour check-in area."
+      "Walk to World Trade Center Station, take the Silver Line inbound to South Station, then continue on foot toward Atlantic Ave for the bike-tour check-in area.",
+    reverseDirections:
+      "Walk to South Station, take the Silver Line outbound toward World Trade Center/Courthouse, and walk the final blocks to the Westin."
   },
   "westin-seaport->beacon-hill-stroll": {
     minutes: 27,
     directions:
-      "Walk to Courthouse Station, take Silver Line to South Station, then transfer to the Red Line toward Park Street and walk uphill to Beacon Hill."
+      "Walk to Courthouse Station, take Silver Line to South Station, then transfer to the Red Line toward Park Street and walk uphill to Beacon Hill.",
+    reverseDirections:
+      "From Park Street, take the Red Line toward South Station, transfer to the Silver Line outbound to Courthouse, then walk to the Westin."
   },
   "westin-seaport->old-north-church": {
     minutes: 29,
     directions:
-      "Take Silver Line to South Station, transfer to Orange Line toward North Station, then walk 10 minutes into the North End."
+      "Take Silver Line to South Station, transfer to Orange Line toward North Station, then walk 10 minutes into the North End.",
+    reverseDirections:
+      "From the North End, take Orange Line toward Downtown, connect at South Station to the Silver Line outbound, then walk from Courthouse to the Westin."
   },
   "westin-seaport->rowes-wharf": {
     minutes: 16,
     directions:
-      "Take the Silver Line toward South Station, exit near the Aquarium/Waterfront area, then walk 5 minutes to Rowes Wharf."
+      "Take the Silver Line toward South Station, exit near the Aquarium/Waterfront area, then walk 5 minutes to Rowes Wharf.",
+    reverseDirections:
+      "From Rowes Wharf, walk to the nearby Waterfront/South Station access point, take the Silver Line outbound, and exit at Courthouse for a short walk to the Westin."
   },
   "harborwalk-seaport->rowes-wharf": {
     minutes: 18,
     directions:
-      "Walk to World Trade Center Station and ride the Silver Line inbound to the Waterfront stop closest to Rowes Wharf."
+      "Walk to World Trade Center Station and ride the Silver Line inbound to the Waterfront stop closest to Rowes Wharf.",
+    reverseDirections:
+      "From Rowes Wharf, board the Silver Line outbound toward World Trade Center and walk to the Harborwalk in Seaport."
   },
   "north-end-waterfront->beacon-hill-stroll": {
     minutes: 17,
     directions:
-      "Walk to Government Center and take the Green Line one stop toward Park Street, then walk up into Beacon Hill."
+      "Walk to Government Center and take the Green Line one stop toward Park Street, then walk up into Beacon Hill.",
+    reverseDirections:
+      "Walk down to Park Street and ride one stop to Government Center, then continue on foot toward the North End waterfront."
   },
   "rowes-wharf->jennifer-lees": {
     minutes: 15,
     directions:
-      "Take the MBTA from Aquarium toward Downtown Crossing, then walk a few minutes to the bakery."
+      "Take the MBTA from Aquarium toward Downtown Crossing, then walk a few minutes to the bakery.",
+    reverseDirections:
+      "From Downtown Crossing, ride one stop toward Aquarium/Waterfront and walk back to Rowes Wharf."
   },
   "westin-seaport->airport-bos": {
     minutes: 38,
     directions:
-      "Walk to World Trade Center Station, board Silver Line SL1 toward Logan Airport, and exit at your terminal."
+      "Walk to World Trade Center Station, board Silver Line SL1 toward Logan Airport, and exit at your terminal.",
+    reverseDirections:
+      "From your Logan terminal, board Silver Line SL1 inbound toward South Station, exit at World Trade Center/Courthouse, then walk to the Westin."
   }
 };

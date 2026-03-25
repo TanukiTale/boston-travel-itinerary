@@ -547,6 +547,7 @@ const myBostonMapUrl = normalizeMyBostonMapUrl(
   import.meta.env.VITE_MY_BOSTON_MAP_URL?.trim() || defaultBostonMapUrl
 );
 const hasCustomBostonMap = Boolean(import.meta.env.VITE_MY_BOSTON_MAP_URL?.trim());
+const disabledPlaceIds = new Set<string>(["city-view-bike-tour"]);
 const hotelWebsiteUrl =
   "https://www.marriott.com/en-us/hotels/bosow-the-westin-boston-seaport-district/overview/";
 const placeById = new Map(BOSTON_PLACES.map((place) => [place.id, place]));
@@ -1069,8 +1070,11 @@ function buildMbtaDirections(from: Place, to: Place): string {
 
   const reverseOverride = MBTA_OVERRIDES[`${to.id}->${from.id}`];
   if (reverseOverride) {
-    const reverseDirections = reverseOverride.reverseDirections ?? reverseOverride.directions;
-    return `${reverseDirections}${stationHint}`;
+    if (reverseOverride.reverseDirections) {
+      return `${reverseOverride.reverseDirections}${stationHint}`;
+    }
+
+    return `Use MBTA from ${from.neighborhood} toward ${to.neighborhood}, then walk the final blocks.${stationHint}`;
   }
 
   return `Use MBTA from ${from.neighborhood} toward ${to.neighborhood}, then walk the final blocks.${stationHint}`;
@@ -1197,6 +1201,7 @@ function getAdditionalSightseeingOptions(
     .filter(
       (place) =>
         isMajorPlace(place) &&
+        !disabledPlaceIds.has(place.id) &&
         !visibleStopIds.has(place.id) &&
         !globallyExcludedSightIds.has(place.id) &&
         isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
@@ -1209,6 +1214,7 @@ function getAdditionalSightseeingOptions(
   return BOSTON_PLACES.filter(
     (place) =>
       isMajorPlace(place) &&
+      !disabledPlaceIds.has(place.id) &&
       !visibleStopIds.has(place.id) &&
       !globallyExcludedSightIds.has(place.id) &&
       dayTemplate.targetNeighborhoods.includes(place.neighborhood) &&
@@ -1235,6 +1241,7 @@ function getAdditionalCozyCafeOptions(
     .filter(
       (place) =>
         isGlutenFreeRestaurant(place) &&
+        !disabledPlaceIds.has(place.id) &&
         !visibleStopIds.has(place.id) &&
         isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
     );
@@ -1246,6 +1253,7 @@ function getAdditionalCozyCafeOptions(
   return BOSTON_PLACES.filter(
     (place) =>
       isGlutenFreeRestaurant(place) &&
+      !disabledPlaceIds.has(place.id) &&
       !visibleStopIds.has(place.id) &&
       dayTemplate.targetNeighborhoods.includes(place.neighborhood) &&
       isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
@@ -1828,13 +1836,17 @@ function TransitLeg({
   fromLabel,
   leaveByTime,
   transportMode,
-  onTransportModeChange
+  onTransportModeChange,
+  isCollapsed,
+  onToggleCollapse
 }: {
   stop: ScheduledStop;
   fromLabel: string;
   leaveByTime: string;
   transportMode: TransitModePreference;
   onTransportModeChange: (nextMode: TransitModePreference) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }) {
   if (!stop.transitFromPrevious) {
     return null;
@@ -1858,49 +1870,69 @@ function TransitLeg({
 
   return (
     <div className="transit-leg">
-      <p className="segment-card-label transit-card-label">Transit card</p>
+      <div className="transit-card-header">
+        <p className="segment-card-label transit-card-label">Transit card</p>
+        <button
+          type="button"
+          className="card-collapse-toggle"
+          onClick={onToggleCollapse}
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? "Expand transit card" : "Collapse transit card"}
+        >
+          {isCollapsed ? "+" : "-"}
+        </button>
+      </div>
       <p className="transit-route">
         {fromLabel}
         {" -> "}
         {stop.place.name}
       </p>
-      <label className="transit-mode-field">
-        <span>Transit mode</span>
-        <select
-          value={transportMode}
-          onChange={(event) =>
-            onTransportModeChange(event.target.value as TransitModePreference)
-          }
-        >
-          <option value="WALK">Walk</option>
-          <option value="MBTA">Take the T</option>
-        </select>
-      </label>
-      <div className="transit-metrics">
-        <p>
-          <span>Leave by</span>
-          <strong>{toMeridiem(leaveByTime)}</strong>
+      {isCollapsed ? (
+        <p className="transit-collapsed-summary">
+          {toMeridiem(leaveByTime)} {"->"} {toMeridiem(stop.arrival)} | {modeLabel}{" "}
+          {travelMins} min
         </p>
-        <p>
-          <span>Target arrival</span>
-          <strong>{toMeridiem(stop.arrival)}</strong>
-        </p>
-        <p>
-          <span>Mode in use</span>
-          <strong>{modeLabel}</strong>
-        </p>
-        <p>
-          <span>Travel estimate</span>
-          <strong>{travelMins} min</strong>
-        </p>
-      </div>
-      <p className="transit-times">
-        Walk {leg.walkMins} min | MBTA {leg.mbtaMins} min
-      </p>
-      {destinationStations ? (
-        <p className="transit-times">Nearest T near destination: {destinationStations}</p>
-      ) : null}
-      <p className="transit-directions">{directions}</p>
+      ) : (
+        <>
+          <label className="transit-mode-field">
+            <span>Transit mode</span>
+            <select
+              value={transportMode}
+              onChange={(event) =>
+                onTransportModeChange(event.target.value as TransitModePreference)
+              }
+            >
+              <option value="WALK">Walk</option>
+              <option value="MBTA">Take the T</option>
+            </select>
+          </label>
+          <div className="transit-metrics">
+            <p>
+              <span>Leave by</span>
+              <strong>{toMeridiem(leaveByTime)}</strong>
+            </p>
+            <p>
+              <span>Target arrival</span>
+              <strong>{toMeridiem(stop.arrival)}</strong>
+            </p>
+            <p>
+              <span>Mode in use</span>
+              <strong>{modeLabel}</strong>
+            </p>
+            <p>
+              <span>Travel estimate</span>
+              <strong>{travelMins} min</strong>
+            </p>
+          </div>
+          <p className="transit-times">
+            Walk {leg.walkMins} min | MBTA {leg.mbtaMins} min
+          </p>
+          {destinationStations ? (
+            <p className="transit-times">Nearest T near destination: {destinationStations}</p>
+          ) : null}
+          <p className="transit-directions">{directions}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -1946,6 +1978,12 @@ function App() {
     Record<string, boolean>
   >({});
   const [collapsedExtraOptionCards, setCollapsedExtraOptionCards] = useState<
+    Record<string, boolean>
+  >({});
+  const [collapsedTransitCards, setCollapsedTransitCards] = useState<
+    Record<string, boolean>
+  >({});
+  const [collapsedReturnCards, setCollapsedReturnCards] = useState<
     Record<string, boolean>
   >({});
   const [removedStopIdsByDay, setRemovedStopIdsByDay] = useState<
@@ -1995,6 +2033,10 @@ function App() {
   const globallyExcludedSightOptionIds = useMemo(() => {
     const excluded = new Set<string>();
     let hasFreedomTrailTour = false;
+
+    for (const disabledPlaceId of disabledPlaceIds) {
+      excluded.add(disabledPlaceId);
+    }
 
     for (const day of itinerary.dayPlans) {
       for (const stop of day.stops) {
@@ -2082,6 +2124,9 @@ function App() {
 
   function addPlaceToDay(dayTitle: string, place: Place) {
     const placeId = place.id;
+    if (disabledPlaceIds.has(placeId)) {
+      return;
+    }
     setAddedStopIdsByDay((previous) => {
       const current = previous[dayTitle] ?? [];
       if (current.includes(placeId)) {
@@ -2179,6 +2224,9 @@ function App() {
 
   function toggleLockForDayStop(dayTitle: string, place: Place) {
     const placeId = place.id;
+    if (disabledPlaceIds.has(placeId)) {
+      return;
+    }
     setLockedStopIdsByDay((previous) => {
       const current = previous[dayTitle] ?? [];
       const isLocked = current.includes(placeId);
@@ -2448,10 +2496,16 @@ function App() {
           );
           const lockedPlaces = lockedStopIds
             .map((placeId) => placeById.get(placeId))
-            .filter((place): place is Place => Boolean(place));
+            .filter(
+              (place): place is Place =>
+                place !== undefined && !disabledPlaceIds.has(place.id)
+            );
           const addedPlaces = (addedStopIdsByDay[day.title] ?? [])
             .map((placeId) => placeById.get(placeId))
-            .filter((place): place is Place => Boolean(place));
+            .filter(
+              (place): place is Place =>
+                place !== undefined && !disabledPlaceIds.has(place.id)
+            );
           const adjustedDay = buildCustomizedDayView(
             preparedDay.plan,
             baseAdjustedDay,
@@ -2501,13 +2555,18 @@ function App() {
           );
           const removedPlaces = [...removedStopIds]
             .map((id) => placeById.get(id))
-            .filter((place): place is Place => Boolean(place));
+            .filter(
+              (place): place is Place =>
+                place !== undefined && !disabledPlaceIds.has(place.id)
+            );
           const currentEnergyMode =
             energyModeOptions.find((option) => option.mode === adjustment.energyMode) ??
             energyModeOptions[1];
           const morningRunPlan = buildMorningRunPlan(day, adjustment.energyMode);
           const isMorningRunExpanded = morningRunExpandedByDay[day.title] ?? false;
           const returnLegMode = getModeForLeg(adjustment, RETURN_TO_HOTEL_LEG_ID);
+          const returnCardId = `${day.title}-return-transit`;
+          const isReturnCardCollapsed = collapsedReturnCards[returnCardId] ?? false;
           const isEnergyMenuOpen = openEnergyMenuDayTitle === day.title;
           const energyMenuId = `energy-menu-${day.title.toLowerCase()}`;
 
@@ -2764,15 +2823,19 @@ function App() {
                     <p className="empty-block">No stop fits this time window.</p>
                   ) : (
                     <ol className="stop-list">
-                      {visibleStops.map((stop, stopIndex) => {
+                      {visibleStops.map((stop) => {
+                        const fullStopIndex = adjustedDay.stops.findIndex(
+                          (candidate) =>
+                            candidate.place.id === stop.place.id &&
+                            candidate.arrival === stop.arrival &&
+                            candidate.departure === stop.departure
+                        );
+                        const previousFullStop =
+                          fullStopIndex > 0 ? adjustedDay.stops[fullStopIndex - 1] : undefined;
                         const fromLabel =
-                          stopIndex === 0
-                            ? preparedDay.plan.startFromLabel
-                            : visibleStops[stopIndex - 1].place.name;
+                          previousFullStop?.place.name ?? preparedDay.plan.startFromLabel;
                         const leaveByTime =
-                          stopIndex === 0
-                            ? adjustedDay.startTime
-                            : visibleStops[stopIndex - 1].departure;
+                          previousFullStop?.departure ?? adjustedDay.startTime;
                         const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(stop.place);
                         const googleStreetViewUrl = buildGoogleStreetViewUrl(stop.place);
                         const stopPhoto = resolvePlacePhoto(
@@ -2781,8 +2844,11 @@ function App() {
                         );
                         const nearbyStations = formatNearbyStations(stop.place);
                         const stopCardId = `${day.title}-${stop.place.id}-${stop.arrival}`;
+                        const transitCardId = `${stopCardId}-transit`;
                         const isSightseeingCardCollapsed =
                           collapsedSightseeingCards[stopCardId] ?? false;
+                        const isTransitCardCollapsed =
+                          collapsedTransitCards[transitCardId] ?? false;
                         const isStopLocked = lockedStopIdSet.has(stop.place.id);
                         const likelyOpenStatus = getLikelyOpenStatus(
                           stop.place,
@@ -2799,6 +2865,13 @@ function App() {
                                 fromLabel={fromLabel}
                                 leaveByTime={leaveByTime}
                                 transportMode={legMode}
+                                isCollapsed={isTransitCardCollapsed}
+                                onToggleCollapse={() =>
+                                  setCollapsedTransitCards((previous) => ({
+                                    ...previous,
+                                    [transitCardId]: !isTransitCardCollapsed
+                                  }))
+                                }
                                 onTransportModeChange={(nextMode) =>
                                   setTransitModeForLeg(
                                     day.title,
@@ -2839,7 +2912,7 @@ function App() {
                                   </button>
                                   <button
                                     type="button"
-                                    className="stop-card-toggle"
+                                    className="card-collapse-toggle"
                                     onClick={() =>
                                       setCollapsedSightseeingCards((previous) => ({
                                         ...previous,
@@ -2847,10 +2920,13 @@ function App() {
                                       }))
                                     }
                                     aria-expanded={!isSightseeingCardCollapsed}
+                                    aria-label={
+                                      isSightseeingCardCollapsed
+                                        ? "Expand sightseeing card"
+                                        : "Collapse sightseeing card"
+                                    }
                                   >
-                                    {isSightseeingCardCollapsed
-                                      ? "Expand card"
-                                      : "Collapse card"}
+                                    {isSightseeingCardCollapsed ? "+" : "-"}
                                   </button>
                                 </div>
                               </div>
@@ -3012,7 +3088,7 @@ function App() {
                                     </button>
                                     <button
                                       type="button"
-                                      className="stop-card-toggle"
+                                      className="card-collapse-toggle"
                                       onClick={() =>
                                         setCollapsedExtraOptionCards((previous) => ({
                                           ...previous,
@@ -3020,8 +3096,13 @@ function App() {
                                         }))
                                       }
                                       aria-expanded={!isOptionCollapsed}
+                                      aria-label={
+                                        isOptionCollapsed
+                                          ? "Expand add-on card"
+                                          : "Collapse add-on card"
+                                      }
                                     >
-                                      {isOptionCollapsed ? "Expand card" : "Collapse card"}
+                                      {isOptionCollapsed ? "+" : "-"}
                                     </button>
                                   </div>
                                 </div>
@@ -3153,7 +3234,7 @@ function App() {
                                     </button>
                                     <button
                                       type="button"
-                                      className="stop-card-toggle"
+                                      className="card-collapse-toggle"
                                       onClick={() =>
                                         setCollapsedExtraOptionCards((previous) => ({
                                           ...previous,
@@ -3161,8 +3242,13 @@ function App() {
                                         }))
                                       }
                                       aria-expanded={!isOptionCollapsed}
+                                      aria-label={
+                                        isOptionCollapsed
+                                          ? "Expand add-on card"
+                                          : "Collapse add-on card"
+                                      }
                                     >
-                                      {isOptionCollapsed ? "Expand card" : "Collapse card"}
+                                      {isOptionCollapsed ? "+" : "-"}
                                     </button>
                                   </div>
                                 </div>
@@ -3301,63 +3387,94 @@ function App() {
 
                   {!isTransitHidden && adjustedDay.returnToHotel && visibleStops.length > 0 ? (
                     <div className="return-hotel-card">
-                      <p className="return-hotel-title">
-                        Return to Hotel
-                        {adjustedDay.returnToHotel.afterDark ? " (after dark)" : ""}
-                      </p>
-                      <label className="transit-mode-field return-mode-field">
-                        <span>Transit mode</span>
-                        <select
-                          value={returnLegMode}
-                          onChange={(event) =>
-                            setTransitModeForLeg(
-                              day.title,
-                              adjustment,
-                              RETURN_TO_HOTEL_LEG_ID,
-                              event.target.value as TransitModePreference
-                            )
+                      <div className="return-hotel-header">
+                        <p className="return-hotel-title">
+                          Return to Hotel
+                          {adjustedDay.returnToHotel.afterDark ? " (after dark)" : ""}
+                        </p>
+                        <button
+                          type="button"
+                          className="card-collapse-toggle"
+                          onClick={() =>
+                            setCollapsedReturnCards((previous) => ({
+                              ...previous,
+                              [returnCardId]: !isReturnCardCollapsed
+                            }))
+                          }
+                          aria-expanded={!isReturnCardCollapsed}
+                          aria-label={
+                            isReturnCardCollapsed
+                              ? "Expand return transit card"
+                              : "Collapse return transit card"
                           }
                         >
-                          <option value="WALK">Walk</option>
-                          <option value="MBTA">Take the T</option>
-                        </select>
-                      </label>
-                      <div className="return-hotel-metrics">
-                        <p>
-                          <span>Depart from</span>
-                          <strong>{adjustedDay.returnToHotel.fromPlaceName}</strong>
-                        </p>
-                        <p>
-                          <span>Leave by</span>
-                          <strong>{toMeridiem(adjustedDay.returnToHotel.leaveByTime)}</strong>
-                        </p>
-                        <p>
-                          <span>Dark by</span>
-                          <strong>{toMeridiem(adjustedDay.returnToHotel.darkByTime)}</strong>
-                        </p>
-                        <p>
-                          <span>Mode in use</span>
-                          <strong>{modeLabels[adjustedDay.returnToHotel.modeInUse]}</strong>
-                        </p>
-                        <p>
-                          <span>Travel estimate</span>
-                          <strong>{adjustedDay.returnToHotel.travelMins} min</strong>
-                        </p>
-                        <p>
-                          <span>Arrive hotel</span>
-                          <strong>{toMeridiem(adjustedDay.returnToHotel.arriveByTime)}</strong>
-                        </p>
+                          {isReturnCardCollapsed ? "+" : "-"}
+                        </button>
                       </div>
-                      <p className="return-hotel-times">
-                        Walk {adjustedDay.returnToHotel.walkMins} min | MBTA{" "}
-                        {adjustedDay.returnToHotel.mbtaMins} min
-                      </p>
-                      <p className="return-hotel-directions">
-                        {adjustedDay.returnToHotel.directions}
-                      </p>
-                      <p className="return-hotel-safety">
-                        {adjustedDay.returnToHotel.safetyNote}
-                      </p>
+                      {isReturnCardCollapsed ? (
+                        <p className="transit-collapsed-summary">
+                          {toMeridiem(adjustedDay.returnToHotel.leaveByTime)} {"->"}{" "}
+                          {toMeridiem(adjustedDay.returnToHotel.arriveByTime)} |{" "}
+                          {modeLabels[adjustedDay.returnToHotel.modeInUse]}{" "}
+                          {adjustedDay.returnToHotel.travelMins} min
+                        </p>
+                      ) : (
+                        <>
+                          <label className="transit-mode-field return-mode-field">
+                            <span>Transit mode</span>
+                            <select
+                              value={returnLegMode}
+                              onChange={(event) =>
+                                setTransitModeForLeg(
+                                  day.title,
+                                  adjustment,
+                                  RETURN_TO_HOTEL_LEG_ID,
+                                  event.target.value as TransitModePreference
+                                )
+                              }
+                            >
+                              <option value="WALK">Walk</option>
+                              <option value="MBTA">Take the T</option>
+                            </select>
+                          </label>
+                          <div className="return-hotel-metrics">
+                            <p>
+                              <span>Depart from</span>
+                              <strong>{adjustedDay.returnToHotel.fromPlaceName}</strong>
+                            </p>
+                            <p>
+                              <span>Leave by</span>
+                              <strong>{toMeridiem(adjustedDay.returnToHotel.leaveByTime)}</strong>
+                            </p>
+                            <p>
+                              <span>Dark by</span>
+                              <strong>{toMeridiem(adjustedDay.returnToHotel.darkByTime)}</strong>
+                            </p>
+                            <p>
+                              <span>Mode in use</span>
+                              <strong>{modeLabels[adjustedDay.returnToHotel.modeInUse]}</strong>
+                            </p>
+                            <p>
+                              <span>Travel estimate</span>
+                              <strong>{adjustedDay.returnToHotel.travelMins} min</strong>
+                            </p>
+                            <p>
+                              <span>Arrive hotel</span>
+                              <strong>{toMeridiem(adjustedDay.returnToHotel.arriveByTime)}</strong>
+                            </p>
+                          </div>
+                          <p className="return-hotel-times">
+                            Walk {adjustedDay.returnToHotel.walkMins} min | MBTA{" "}
+                            {adjustedDay.returnToHotel.mbtaMins} min
+                          </p>
+                          <p className="return-hotel-directions">
+                            {adjustedDay.returnToHotel.directions}
+                          </p>
+                          <p className="return-hotel-safety">
+                            {adjustedDay.returnToHotel.safetyNote}
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : null}
 

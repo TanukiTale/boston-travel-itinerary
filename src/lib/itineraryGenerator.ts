@@ -182,8 +182,11 @@ function mbtaDirections(from: Place, to: Place): string {
 
   const reverseOverride = MBTA_OVERRIDES[`${to.id}->${from.id}`];
   if (reverseOverride) {
-    const reverseDirections = reverseOverride.reverseDirections ?? reverseOverride.directions;
-    return `${reverseDirections}${stationHint}`;
+    if (reverseOverride.reverseDirections) {
+      return `${reverseOverride.reverseDirections}${stationHint}`;
+    }
+
+    return `Use the MBTA from ${from.neighborhood} toward ${to.neighborhood} with one transfer, then walk the final few blocks.${stationHint}`;
   }
 
   return `Use the MBTA from ${from.neighborhood} toward ${to.neighborhood} with one transfer, then walk the final few blocks.${stationHint}`;

@@ -788,6 +788,13 @@ body {
   gap: 0.58rem;
 }
 
+.transit-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
 .segment-card-label {
   margin: 0;
   display: inline-flex;
@@ -818,6 +825,13 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--sea-deep);
+}
+
+.transit-collapsed-summary {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .transit-mode-field {
@@ -954,6 +968,13 @@ body {
   gap: 0.45rem;
 }
 
+.return-hotel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
 .return-mode-field {
   margin-top: 0.08rem;
 }
@@ -1032,32 +1053,33 @@ body {
   gap: 0.35rem;
 }
 
-.stop-card-toggle {
+.card-collapse-toggle {
   border: 1px solid var(--toggle-border);
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--toggle-bg);
   color: var(--toggle-text);
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 0.24rem 0.54rem;
+  line-height: 1;
+  width: 2rem;
+  height: 1.85rem;
+  padding: 0;
   cursor: pointer;
   transition:
     background 180ms ease,
     transform 180ms ease;
 }
 
-.stop-card-toggle:hover {
+.card-collapse-toggle:hover {
   background: var(--toggle-bg-hover);
 }
 
-.stop-card-toggle:active {
+.card-collapse-toggle:active {
   transform: translateY(1px);
 }
 
-.stop-card-toggle:focus-visible {
+.card-collapse-toggle:focus-visible {
   outline: 2px solid var(--sea);
   outline-offset: 2px;
 }
