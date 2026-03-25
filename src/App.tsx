@@ -21,11 +21,8 @@ const modeLabels = {
   MBTA: "MBTA"
 } as const;
 
-const transferBufferByMode = {
-  WALK: 6,
-  MBTA: 12
-} as const;
 const FREEDOM_TRAIL_TOUR_ID = "freedom-trail-walk-tour";
+const RETURN_TO_HOTEL_LEG_ID = "__return_to_hotel__";
 const fixedArrivalByDayAndStopId: Record<string, Record<string, string>> = {
   Sunday: {
     "freedom-trail-walk-tour": "12:00"
@@ -509,6 +506,7 @@ const DAY_ADJUSTMENTS_STORAGE_KEY = "boston-day-adjustments-v1";
 const REMOVED_STOPS_STORAGE_KEY = "boston-removed-stops-v1";
 const ADDED_STOPS_STORAGE_KEY = "boston-added-stops-v1";
 const LOCKED_STOPS_STORAGE_KEY = "boston-locked-stops-v1";
+const HIDDEN_STOPS_STORAGE_KEY = "boston-hidden-stops-v1";
 const defaultBostonMapUrl = "https://www.google.com/maps/search/?api=1&query=Boston%2C+MA";
 function normalizeMyBostonMapUrl(urlValue: string): string {
   const value = urlValue.trim();
@@ -983,6 +981,13 @@ function getTransitMinsForMode(
   }
 
   return transportMode === "MBTA" ? leg.mbtaMins : leg.walkMins;
+}
+
+function getModeForLeg(
+  adjustment: DayTimingAdjustment,
+  toPlaceId: string
+): TransitModePreference {
+  return adjustment.legModeByToPlaceId[toPlaceId] ?? adjustment.transportMode;
 }
 
 function toRadians(degrees: number): number {
@@ -1559,7 +1564,8 @@ function buildAdjustedDayView(
 
   for (let stopIndex = 0; stopIndex < day.stops.length; stopIndex += 1) {
     const stop = day.stops[stopIndex];
-    const legMins = getTransitMinsForMode(stop, adjustment.transportMode);
+    const legMode = getModeForLeg(adjustment, stop.place.id);
+    const legMins = getTransitMinsForMode(stop, legMode);
     const tentativeArrivalMins = cursor + legMins;
     const fixedArrival = fixedArrivalByDayAndStopId[day.title]?.[stop.place.id];
     const fixedArrivalMins = fixedArrival
@@ -1609,7 +1615,10 @@ function buildAdjustedDayView(
     const leaveByMins = parseClockToMinutes(leaveByTime);
     const darkByMins = parseClockToMinutes(day.returnToHotel.darkByTime);
     const afterDark = leaveByMins >= darkByMins;
-    const modeInUse: TravelMode = adjustment.transportMode;
+    const modeInUse: TravelMode = getModeForLeg(
+      adjustment,
+      RETURN_TO_HOTEL_LEG_ID
+    );
     const travelMins =
       modeInUse === "MBTA" ? day.returnToHotel.mbtaMins : day.returnToHotel.walkMins;
     const arriveByTime = minutesToClock(leaveByMins + travelMins);
@@ -1691,8 +1700,8 @@ function buildCustomizedDayView(
     const place = orderedPlaces[index];
     const sourceStop = sourceStopById.get(place.id);
     const transit = buildTransitEstimateBetweenPlaces(previousPlace, place);
-    const legMins =
-      adjustment.transportMode === "MBTA" ? transit.mbtaMins : transit.walkMins;
+    const legMode = getModeForLeg(adjustment, place.id);
+    const legMins = legMode === "MBTA" ? transit.mbtaMins : transit.walkMins;
     const tentativeArrivalMins = cursor + legMins;
     const fixedArrival = fixedArrivalByDayAndStopId[day.title]?.[place.id];
     const fixedArrivalMins = fixedArrival
@@ -1749,7 +1758,10 @@ function buildCustomizedDayView(
     const leaveByMins = parseClockToMinutes(leaveByTime);
     const darkByMins = parseClockToMinutes(day.returnToHotel.darkByTime);
     const afterDark = leaveByMins >= darkByMins;
-    const modeInUse: TravelMode = adjustment.transportMode;
+    const modeInUse: TravelMode = getModeForLeg(
+      adjustment,
+      RETURN_TO_HOTEL_LEG_ID
+    );
     const transitBack = buildTransitEstimateBetweenPlaces(finalStop.place, HOTEL_BASE);
     const travelMins =
       modeInUse === "MBTA" ? transitBack.mbtaMins : transitBack.walkMins;
@@ -1815,12 +1827,14 @@ function TransitLeg({
   stop,
   fromLabel,
   leaveByTime,
-  transportMode
+  transportMode,
+  onTransportModeChange
 }: {
   stop: ScheduledStop;
   fromLabel: string;
   leaveByTime: string;
   transportMode: TransitModePreference;
+  onTransportModeChange: (nextMode: TransitModePreference) => void;
 }) {
   if (!stop.transitFromPrevious) {
     return null;
@@ -1830,10 +1844,6 @@ function TransitLeg({
   const modeInUse = transportMode;
   const modeLabel = modeLabels[modeInUse];
   const travelMins = modeInUse === "MBTA" ? leg.mbtaMins : leg.walkMins;
-  const contingencyBufferMins = transferBufferByMode[modeInUse];
-  const fallbackMode = modeInUse === "MBTA" ? "Walk" : "MBTA";
-  const fallbackTravelMins =
-    modeInUse === "MBTA" ? leg.walkMins : leg.mbtaMins;
   const destinationStations = formatNearbyStations(stop.place);
   const directions =
     modeInUse === leg.recommendedMode
@@ -1854,6 +1864,18 @@ function TransitLeg({
         {" -> "}
         {stop.place.name}
       </p>
+      <label className="transit-mode-field">
+        <span>Transit mode</span>
+        <select
+          value={transportMode}
+          onChange={(event) =>
+            onTransportModeChange(event.target.value as TransitModePreference)
+          }
+        >
+          <option value="WALK">Walk</option>
+          <option value="MBTA">Take the T</option>
+        </select>
+      </label>
       <div className="transit-metrics">
         <p>
           <span>Leave by</span>
@@ -1871,16 +1893,6 @@ function TransitLeg({
           <span>Travel estimate</span>
           <strong>{travelMins} min</strong>
         </p>
-        <p>
-          <span>Transit buffer</span>
-          <strong>{contingencyBufferMins} min</strong>
-        </p>
-        <p>
-          <span>Fallback mode</span>
-          <strong>
-            {fallbackMode} ({fallbackTravelMins} min)
-          </strong>
-        </p>
       </div>
       <p className="transit-times">
         Walk {leg.walkMins} min | MBTA {leg.mbtaMins} min
@@ -1889,15 +1901,6 @@ function TransitLeg({
         <p className="transit-times">Nearest T near destination: {destinationStations}</p>
       ) : null}
       <p className="transit-directions">{directions}</p>
-      <p className="transit-buffer-note">
-        Build in a {contingencyBufferMins}-minute cushion before this transfer when
-        possible.
-      </p>
-      {modeInUse !== leg.recommendedMode ? (
-        <p className="transit-override-note">
-          Manual mode override is active for this day.
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -1968,6 +1971,14 @@ function App() {
       itinerary.dayPlans.map((day) => [day.title, []])
     ) as Record<string, string[]>;
     return readStoredRecord(LOCKED_STOPS_STORAGE_KEY, defaults);
+  });
+  const [hiddenStopIdsByDay, setHiddenStopIdsByDay] = useState<
+    Record<string, string[]>
+  >(() => {
+    const defaults = Object.fromEntries(
+      itinerary.dayPlans.map((day) => [day.title, []])
+    ) as Record<string, string[]>;
+    return readStoredRecord(HIDDEN_STOPS_STORAGE_KEY, defaults);
   });
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
   const [transitHiddenByDay, setTransitHiddenByDay] = useState<Record<string, boolean>>(
@@ -2044,6 +2055,31 @@ function App() {
     }, 260);
   }
 
+  function setTransitModeForLeg(
+    dayTitle: string,
+    adjustment: DayTimingAdjustment,
+    legKey: string,
+    nextMode: TransitModePreference
+  ) {
+    setDayAdjustments((previous) => {
+      const current = previous[dayTitle] ?? adjustment;
+      const nextLegModeByToPlaceId = { ...current.legModeByToPlaceId };
+      if (nextMode === current.transportMode) {
+        delete nextLegModeByToPlaceId[legKey];
+      } else {
+        nextLegModeByToPlaceId[legKey] = nextMode;
+      }
+
+      return {
+        ...previous,
+        [dayTitle]: {
+          ...current,
+          legModeByToPlaceId: nextLegModeByToPlaceId
+        }
+      };
+    });
+  }
+
   function addPlaceToDay(dayTitle: string, place: Place) {
     const placeId = place.id;
     setAddedStopIdsByDay((previous) => {
@@ -2058,6 +2094,10 @@ function App() {
       };
     });
     setRemovedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+    setHiddenStopIdsByDay((previous) => ({
       ...previous,
       [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
     }));
@@ -2086,6 +2126,10 @@ function App() {
       ...previous,
       [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
     }));
+    setHiddenStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
     setUndoToast({
       message: `Removed ${place.name}.`,
       action: "UNDO_REMOVE",
@@ -2103,6 +2147,31 @@ function App() {
 
   function restorePlaceForDay(dayTitle: string, placeId: string) {
     setRemovedStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+    setHiddenStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
+    }));
+  }
+
+  function hideStopForDay(dayTitle: string, placeId: string) {
+    setHiddenStopIdsByDay((previous) => {
+      const current = previous[dayTitle] ?? [];
+      if (current.includes(placeId)) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [dayTitle]: [...current, placeId]
+      };
+    });
+  }
+
+  function showHiddenStopForDay(dayTitle: string, placeId: string) {
+    setHiddenStopIdsByDay((previous) => ({
       ...previous,
       [dayTitle]: (previous[dayTitle] ?? []).filter((id) => id !== placeId)
     }));
@@ -2248,6 +2317,13 @@ function App() {
   }, [lockedStopIdsByDay]);
 
   useEffect(() => {
+    window.localStorage.setItem(
+      HIDDEN_STOPS_STORAGE_KEY,
+      JSON.stringify(hiddenStopIdsByDay)
+    );
+  }, [hiddenStopIdsByDay]);
+
+  useEffect(() => {
     if (!undoToast) {
       return;
     }
@@ -2385,29 +2461,42 @@ function App() {
             addedPlaces,
             removedStopIds
           );
+          const hiddenStopIds = hiddenStopIdsByDay[day.title] ?? [];
+          const hiddenStopIdSet = new Set(hiddenStopIds);
+          const visibleStops = adjustedDay.stops.filter(
+            (stop) => !hiddenStopIdSet.has(stop.place.id)
+          );
+          const hiddenStops = adjustedDay.stops.filter((stop) =>
+            hiddenStopIdSet.has(stop.place.id)
+          );
+          const dayRouteMode: TransitModePreference = visibleStops.some((stop) =>
+            getModeForLeg(adjustment, stop.place.id) === "MBTA"
+          )
+            ? "MBTA"
+            : "WALK";
           const dayStartPoint = buildStartPointForDay(preparedDay.plan);
           const dayRouteUrl = buildGoogleMapsDayRouteUrl(
             dayStartPoint,
-            adjustedDay.stops,
-            adjustment.transportMode
+            visibleStops,
+            dayRouteMode
           );
-          const dayWalkTotalMins = adjustedDay.stops.reduce(
+          const dayWalkTotalMins = visibleStops.reduce(
             (total, stop) => total + (stop.transitFromPrevious?.walkMins ?? 0),
             0
           );
-          const dayMbtaTotalMins = adjustedDay.stops.reduce(
+          const dayMbtaTotalMins = visibleStops.reduce(
             (total, stop) => total + (stop.transitFromPrevious?.mbtaMins ?? 0),
             0
           );
           const additionalSightOptions = getAdditionalSightseeingOptions(
             day,
-            adjustedDay.stops,
+            visibleStops,
             globallyExcludedSightOptionIds,
             dayStartPoint
           );
           const additionalCozyCafeOptions = getAdditionalCozyCafeOptions(
             day,
-            adjustedDay.stops,
+            visibleStops,
             dayStartPoint
           );
           const removedPlaces = [...removedStopIds]
@@ -2418,6 +2507,7 @@ function App() {
             energyModeOptions[1];
           const morningRunPlan = buildMorningRunPlan(day, adjustment.energyMode);
           const isMorningRunExpanded = morningRunExpandedByDay[day.title] ?? false;
+          const returnLegMode = getModeForLeg(adjustment, RETURN_TO_HOTEL_LEG_ID);
           const isEnergyMenuOpen = openEnergyMenuDayTitle === day.title;
           const energyMenuId = `energy-menu-${day.title.toLowerCase()}`;
 
@@ -2563,21 +2653,33 @@ function App() {
                       />
                     </label>
                     <label className="day-adjust-field">
-                      <span>Transit mode</span>
+                      <span>Default transit mode</span>
                       <select
                         value={adjustment.transportMode}
                         onChange={(event) =>
-                          setDayAdjustments((previous) => ({
-                            ...previous,
-                            [day.title]: {
-                              ...adjustment,
-                              transportMode: event.target.value as TransitModePreference
-                            }
-                          }))
+                          setDayAdjustments((previous) => {
+                            const current = previous[day.title] ?? adjustment;
+                            const nextDefaultMode = event.target
+                              .value as TransitModePreference;
+                            const nextLegModeByToPlaceId = Object.fromEntries(
+                              Object.entries(current.legModeByToPlaceId).filter(
+                                ([, legMode]) => legMode !== nextDefaultMode
+                              )
+                            ) as Record<string, TransitModePreference>;
+
+                            return {
+                              ...previous,
+                              [day.title]: {
+                                ...current,
+                                transportMode: nextDefaultMode,
+                                legModeByToPlaceId: nextLegModeByToPlaceId
+                              }
+                            };
+                          })
                         }
                       >
-                        <option value="MBTA">MBTA</option>
                         <option value="WALK">Walk</option>
+                        <option value="MBTA">MBTA</option>
                       </select>
                     </label>
                   </div>
@@ -2658,19 +2760,19 @@ function App() {
                     </section>
                   ) : null}
 
-                  {adjustedDay.stops.length === 0 ? (
+                  {visibleStops.length === 0 ? (
                     <p className="empty-block">No stop fits this time window.</p>
                   ) : (
                     <ol className="stop-list">
-                      {adjustedDay.stops.map((stop, stopIndex) => {
+                      {visibleStops.map((stop, stopIndex) => {
                         const fromLabel =
                           stopIndex === 0
                             ? preparedDay.plan.startFromLabel
-                            : adjustedDay.stops[stopIndex - 1].place.name;
+                            : visibleStops[stopIndex - 1].place.name;
                         const leaveByTime =
                           stopIndex === 0
                             ? adjustedDay.startTime
-                            : adjustedDay.stops[stopIndex - 1].departure;
+                            : visibleStops[stopIndex - 1].departure;
                         const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(stop.place);
                         const googleStreetViewUrl = buildGoogleStreetViewUrl(stop.place);
                         const stopPhoto = resolvePlacePhoto(
@@ -2687,6 +2789,7 @@ function App() {
                           day.title,
                           stop.arrival
                         );
+                        const legMode = getModeForLeg(adjustment, stop.place.id);
 
                         return (
                           <li className="stop-item" key={`${stop.place.id}-${stop.arrival}`}>
@@ -2695,7 +2798,15 @@ function App() {
                                 stop={stop}
                                 fromLabel={fromLabel}
                                 leaveByTime={leaveByTime}
-                                transportMode={adjustment.transportMode}
+                                transportMode={legMode}
+                                onTransportModeChange={(nextMode) =>
+                                  setTransitModeForLeg(
+                                    day.title,
+                                    adjustment,
+                                    stop.place.id,
+                                    nextMode
+                                  )
+                                }
                               />
                             ) : null}
                             <div className="stop-card">
@@ -2710,6 +2821,13 @@ function App() {
                                     onClick={() => toggleLockForDayStop(day.title, stop.place)}
                                   >
                                     {isStopLocked ? "Unlock stop" : "Lock stop"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="stop-card-action-btn stop-card-hide-btn"
+                                    onClick={() => hideStopForDay(day.title, stop.place.id)}
+                                  >
+                                    Hide card
                                   </button>
                                   <button
                                     type="button"
@@ -3152,6 +3270,26 @@ function App() {
                     </div>
                   ) : null}
 
+                  {hiddenStops.length > 0 ? (
+                    <div className="hidden-cards-section">
+                      <p className="segment-card-label transit-card-label">
+                        Hidden cards
+                      </p>
+                      <div className="removed-cards-list">
+                        {hiddenStops.map((stop) => (
+                          <button
+                            type="button"
+                            key={`${day.title}-hidden-${stop.place.id}`}
+                            className="removed-card-chip"
+                            onClick={() => showHiddenStopForDay(day.title, stop.place.id)}
+                          >
+                            Show: {stop.place.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   <p className="weather-tip">{buildRainFallbackTip(day.title)}</p>
 
                   {isTransitHidden ? (
@@ -3161,12 +3299,29 @@ function App() {
                     </p>
                   ) : null}
 
-                  {!isTransitHidden && adjustedDay.returnToHotel ? (
+                  {!isTransitHidden && adjustedDay.returnToHotel && visibleStops.length > 0 ? (
                     <div className="return-hotel-card">
                       <p className="return-hotel-title">
                         Return to Hotel
                         {adjustedDay.returnToHotel.afterDark ? " (after dark)" : ""}
                       </p>
+                      <label className="transit-mode-field return-mode-field">
+                        <span>Transit mode</span>
+                        <select
+                          value={returnLegMode}
+                          onChange={(event) =>
+                            setTransitModeForLeg(
+                              day.title,
+                              adjustment,
+                              RETURN_TO_HOTEL_LEG_ID,
+                              event.target.value as TransitModePreference
+                            )
+                          }
+                        >
+                          <option value="WALK">Walk</option>
+                          <option value="MBTA">Take the T</option>
+                        </select>
+                      </label>
                       <div className="return-hotel-metrics">
                         <p>
                           <span>Depart from</span>
