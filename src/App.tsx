@@ -40,13 +40,6 @@ interface PlacePhoto {
   caption: string;
 }
 
-interface WikipediaSummaryResponse {
-  title?: string;
-  thumbnail?: {
-    source?: string;
-  };
-}
-
 const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   "westin-seaport": {
     imageUrl:
@@ -58,11 +51,11 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "freedom-trail-walk-tour": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Freedom_Trail.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/File:Boston_Freedom_Trail.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Old State House on the Freedom Trail"
+    caption: "Freedom Trail brick marker route"
   },
   "city-view-bike-tour": {
     imageUrl:
@@ -95,19 +88,19 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "granary-burying-ground": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Granary_Burying_Ground,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/File:Granary_Burying_Ground,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Downtown Freedom Trail core near Granary Burying Ground"
+    caption: "Granary Burying Ground"
   },
   "state-house-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Massachusetts_State_House_in_Boston.JPG",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/File:Massachusetts_State_House_in_Boston.JPG",
     sourceLabel: "Wikimedia Commons",
-    caption: "Beacon Hill streets near the State House"
+    caption: "Massachusetts State House"
   },
   "old-north-church": {
     imageUrl:
@@ -133,33 +126,34 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "old-south-meeting-house": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_South_Meeting_House,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/File:Old_South_Meeting_House,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Historic downtown core near Old South Meeting House"
+    caption: "Old South Meeting House"
   },
   "copley-square-trinity": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Trinity_Church_in_Copley_Square.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Trinity_Church_in_Copley_Square.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "City streets between Downtown and Back Bay"
+    caption: "Trinity Church at Copley Square"
   },
   "bpl-courtyard": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Public_Garden_Lagoon_12.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Public_Garden_Lagoon_12.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/The_central_courtyard_at_Boston_Public_Library.jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:The_central_courtyard_at_Boston_Public_Library.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Back Bay green space near the library district"
+    caption: "Boston Public Library courtyard"
   },
   "newbury-street-stroll": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Newbury_Street,_USA,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/File:Newbury_Street,_USA,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Classic Boston brownstone streets"
+    caption: "Newbury Street"
   },
   "downtown-crossing-stroll": {
     imageUrl:
@@ -170,18 +164,18 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "boston-athenaeum-exterior": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Athenaeum_(54958906703).jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/File:Boston_Athenaeum_(54958906703).jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Beacon Hill architecture near the Athenaeum"
+    caption: "Boston Athenaeum"
   },
   "chinatown-gateway-walk": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Chinatown_Gate_Boston.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Chinatown_Gate_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Downtown streets near Chinatown and the Greenway"
+    caption: "Boston Chinatown Gate"
   },
   "harborwalk-seaport": {
     imageUrl:
@@ -239,55 +233,57 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "greenway-art-walk": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Nichols_House_Museum_(54957839147).jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/File:Nichols_House_Museum_(54957839147).jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Beacon Hill brick streets near the Nichols House Museum"
+    caption: "Nichols House Museum"
   },
   "louisburg-square-loop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Louisburg_Square_Beacon_Hill_Boston_Massachusetts.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
+      "https://commons.wikimedia.org/wiki/File:Louisburg_Square_Beacon_Hill_Boston_Massachusetts.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Louisburg Square area in Beacon Hill"
   },
   "kings-chapel-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_-_King%27s_Chapel_(48718908106).jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Old_State_House_Boston_2025.jpg",
+      "https://commons.wikimedia.org/wiki/File:Boston_-_King%27s_Chapel_(48718908106).jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Historic downtown district near King's Chapel"
+    caption: "King's Chapel"
   },
   "commonwealth-ave-mall": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Public_Garden_Lagoon_12.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Public_Garden_Lagoon_12.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/(Back_Bay_Boston,_Massachusetts,_Commonwealth_Avenue_Mall).jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:(Back_Bay_Boston,_Massachusetts,_Commonwealth_Avenue_Mall).jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Back Bay green promenade atmosphere"
+    caption: "Commonwealth Avenue Mall"
   },
   "old-city-hall-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_City_Hall_in_Boston,_Massachusetts.jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:Old_City_Hall_in_Boston,_Massachusetts.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Downtown civic core near Old City Hall"
+    caption: "Old City Hall"
   },
   "boston-public-market-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Faneuil_Hall.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Boston_Faneuil_Hall.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Public_Market_Exterior.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Boston_Public_Market_Exterior.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Boston Public Market / Haymarket area"
+    caption: "Boston Public Market"
   },
   "trinity-church-interior-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Trinity_Church_Copley_Square.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Trinity_Church_Copley_Square.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Back Bay church and square district"
+    caption: "Trinity Church in Back Bay"
   },
   "prudential-skyline-view": {
     imageUrl:
@@ -306,34 +302,34 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "old-south-church-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_South_Church_in_Boston.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Old_South_Church_in_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Back Bay streets near Old South Church"
+    caption: "Old South Church"
   },
   "custom-house-tower-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/2017_Rowes_Wharf_from_Boston_Harbor_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Custom_House_Tower_-_Boston,_MA.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:2017_Rowes_Wharf_from_Boston_Harbor_1.jpg",
+      "https://commons.wikimedia.org/wiki/File:Custom_House_Tower_-_Boston,_MA.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Waterfront skyline near Custom House Tower"
+    caption: "Custom House Tower"
   },
   "long-wharf-promenade": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/2017_Rowes_Wharf_from_Boston_Harbor_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2017_Long_Wharf,_Boston,_Massachusetts_from_Boston_Harbor.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:2017_Rowes_Wharf_from_Boston_Harbor_1.jpg",
+      "https://commons.wikimedia.org/wiki/File:2017_Long_Wharf,_Boston,_Massachusetts_from_Boston_Harbor.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Long Wharf waterfront promenade"
   },
   "fan-pier-park-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Harborwalk_Boston_at_Blue_Hills_Bank_Pavilion.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2017_Fan_Pier_and_Seaport_District_from_Central_Wharf.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Harborwalk_Boston_at_Blue_Hills_Bank_Pavilion.JPG",
+      "https://commons.wikimedia.org/wiki/File:2017_Fan_Pier_and_Seaport_District_from_Central_Wharf.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Fan Pier Harborwalk in the Seaport"
+    caption: "Fan Pier in Seaport"
   },
   "thinktransit-conference": {
     imageUrl:
@@ -368,10 +364,10 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "jennifer-lees": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/DowntownCrossingBoston.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:DowntownCrossingBoston.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_Public_Market_Exterior.jpg",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Boston_Public_Market_Exterior.jpg",
     sourceLabel: "Wikimedia Commons",
-    caption: "Downtown Crossing streetscape"
+    caption: "Boston Public Market area"
   },
   "modern-pastry-gf-cannoli": {
     imageUrl:
@@ -398,54 +394,6 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   }
 };
 
-const wikipediaPhotoTitleById: Partial<Record<string, string>> = {
-  "freedom-trail-walk-tour": "Freedom Trail",
-  "city-view-bike-tour": "Bluebikes",
-  "paul-revere-house": "Paul Revere House",
-  "old-north-church": "Old North Church",
-  "quincy-market": "Quincy Market",
-  "boston-common-loop": "Boston Common",
-  "granary-burying-ground": "Granary Burying Ground",
-  "state-house-stop": "Massachusetts State House",
-  "beacon-hill-stroll": "Beacon Hill, Boston",
-  "public-garden-loop": "Public Garden (Boston)",
-  "old-south-meeting-house": "Old South Meeting House",
-  "copley-square-trinity": "Copley Square",
-  "bpl-courtyard": "Boston Public Library",
-  "newbury-street-stroll": "Newbury Street",
-  "chinatown-gateway-walk": "Chinatown, Boston",
-  "downtown-crossing-stroll": "Downtown Crossing",
-  "boston-athenaeum-exterior": "Boston Athenaeum",
-  "harborwalk-seaport": "Boston Harborwalk",
-  "ica-waterfront": "Institute of Contemporary Art, Boston",
-  "north-end-waterfront": "Christopher Columbus Waterfront Park",
-  "rowes-wharf": "Rowes Wharf",
-  "tea-party-tea-room": "Boston Tea Party Ships and Museum",
-  "old-state-house-stop": "Old State House (Boston)",
-  "copps-hill-burying-ground": "Copp's Hill Burying Ground",
-  "greenway-art-walk": "Nichols House Museum",
-  "louisburg-square-loop": "Louisburg Square",
-  "kings-chapel-stop": "King's Chapel",
-  "commonwealth-ave-mall": "Commonwealth Avenue (Boston)",
-  "old-city-hall-stop": "Old City Hall (Boston)",
-  "boston-public-market-stop": "Boston Public Market",
-  "trinity-church-interior-stop": "Trinity Church (Boston)",
-  "prudential-skyline-view": "Prudential Center (Boston)",
-  "charles-esplanade-walk": "Charles River Esplanade",
-  "old-south-church-stop": "Old South Church",
-  "custom-house-tower-stop": "Custom House Tower",
-  "long-wharf-promenade": "Long Wharf (Boston)",
-  "fan-pier-park-stop": "South Boston Waterfront",
-  "thinktransit-conference": "Boston Convention and Exhibition Center",
-  "kanes-downtown": "Financial District, Boston",
-  "verveine-cafe": "Central Square, Cambridge",
-  "violette-bakers": "Harvard Square",
-  "jennifer-lees": "Boston Public Market",
-  "modern-pastry-gf-cannoli": "North End, Boston",
-  "nebo-cucina": "Fort Point, Boston",
-  "mikes-pastry": "North End, Boston"
-};
-
 const defaultPlacePhoto = {
   imageUrl:
     "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
@@ -455,44 +403,12 @@ const defaultPlacePhoto = {
   caption: "Historic Boston streetscape"
 } as const;
 
-function buildOpenStreetMapPreviewUrl(place: Place): string {
-  const lat = place.lat.toFixed(5);
-  const lng = place.lng.toFixed(5);
-  return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=16&size=1200x675&markers=${lat},${lng},red-pushpin`;
-}
-
-function buildOpenStreetMapSourceUrl(place: Place): string {
-  const lat = place.lat.toFixed(5);
-  const lng = place.lng.toFixed(5);
-  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
-}
-
-function buildWikipediaSummaryUrl(title: string): string {
-  return `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-}
-
-function buildWikipediaPageUrl(title: string): string {
-  const encoded = encodeURIComponent(title).replace(/%20/g, "_");
-  return `https://en.wikipedia.org/wiki/${encoded}`;
-}
-
 function buildFallbackImageUrlForPlace(place: Place): string {
-  if (Number.isFinite(place.lat) && Number.isFinite(place.lng)) {
-    return buildOpenStreetMapPreviewUrl(place);
-  }
-
+  void place;
   return defaultPlacePhoto.imageUrl;
 }
 
-function resolvePlacePhoto(
-  place: Place,
-  wikipediaPhotosById?: Partial<Record<string, PlacePhoto>>
-): PlacePhoto {
-  const wikipediaPhoto = wikipediaPhotosById?.[place.id];
-  if (wikipediaPhoto) {
-    return wikipediaPhoto;
-  }
-
+function resolvePlacePhoto(place: Place): PlacePhoto {
   const curated = placePhotosById[place.id];
   if (curated) {
     return curated;
@@ -503,10 +419,10 @@ function resolvePlacePhoto(
   }
 
   return {
-    imageUrl: buildOpenStreetMapPreviewUrl(place),
-    sourceUrl: buildOpenStreetMapSourceUrl(place),
-    sourceLabel: "OpenStreetMap",
-    caption: `${place.name} location preview`
+    imageUrl: defaultPlacePhoto.imageUrl,
+    sourceUrl: defaultPlacePhoto.sourceUrl,
+    sourceLabel: defaultPlacePhoto.sourceLabel,
+    caption: `${place.name} in Boston`
   };
 }
 
@@ -896,6 +812,19 @@ function buildGoogleMapsPlaceUrl(place: Place): string {
   });
 
   return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
+function buildGoogleMapsNavigateUrl(
+  place: Place,
+  transportMode: TransitModePreference
+): string {
+  const params = new URLSearchParams({
+    api: "1",
+    destination: placeToMapQuery(place),
+    travelmode: transportMode === "WALK" ? "walking" : "transit"
+  });
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 function buildGoogleMapsDayRouteUrl(
@@ -2003,9 +1932,6 @@ function App() {
     () => BOSTON_PLACES.filter((place) => isGlutenFreeRestaurant(place)),
     []
   );
-  const [wikipediaPhotosById, setWikipediaPhotosById] = useState<
-    Partial<Record<string, PlacePhoto>>
-  >({});
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
   const [selectedFlightKey, setSelectedFlightKey] = useState<"inbound" | "outbound">(
     "inbound"
@@ -2327,79 +2253,6 @@ function App() {
   }
 
   useEffect(() => {
-    let cancelled = false;
-    const abortController = new AbortController();
-
-    async function loadWikipediaPhotos() {
-      const photoEntries = Object.entries(wikipediaPhotoTitleById);
-      const loadedEntries = await Promise.all(
-        photoEntries.map(async ([placeId, pageTitle]) => {
-          if (!pageTitle) {
-            return null;
-          }
-
-          try {
-            const response = await fetch(buildWikipediaSummaryUrl(pageTitle), {
-              signal: abortController.signal
-            });
-
-            if (!response.ok) {
-              return null;
-            }
-
-            const data = (await response.json()) as WikipediaSummaryResponse;
-            const imageUrl = data.thumbnail?.source;
-
-            if (!imageUrl) {
-              return null;
-            }
-
-            const placePhoto: PlacePhoto = {
-              imageUrl,
-              sourceUrl: buildWikipediaPageUrl(pageTitle),
-              sourceLabel: "Wikipedia",
-              caption: data.title ?? pageTitle
-            };
-
-            return [placeId, placePhoto] as const;
-          } catch (error) {
-            if (error instanceof DOMException && error.name === "AbortError") {
-              return null;
-            }
-
-            return null;
-          }
-        })
-      );
-
-      if (cancelled) {
-        return;
-      }
-
-      const loadedPhotoMap: Partial<Record<string, PlacePhoto>> = {};
-      for (const entry of loadedEntries) {
-        if (!entry) {
-          continue;
-        }
-
-        const [placeId, placePhoto] = entry;
-        loadedPhotoMap[placeId] = placePhoto;
-      }
-
-      if (Object.keys(loadedPhotoMap).length > 0) {
-        setWikipediaPhotosById(loadedPhotoMap);
-      }
-    }
-
-    void loadWikipediaPhotos();
-
-    return () => {
-      cancelled = true;
-      abortController.abort();
-    };
-  }, []);
-
-  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
@@ -2483,9 +2336,12 @@ function App() {
     <div className="app-shell">
       <header className="hero">
         <div className="hero-top">
-          <p className="eyebrow">Mona's ThinkTransit Week Companion</p>
+          <p className="eyebrow">Boston navigation + free-time planning</p>
         </div>
-        <h1>Mona's Boston Trip</h1>
+        <h1>Mona's Boston Time</h1>
+        <p className="hero-text">
+          Clear routes, realistic timing, and curated stops so your free time is easy to use.
+        </p>
         <div className="hero-actions hero-actions-below-title">
           <button
             type="button"
@@ -2927,12 +2783,14 @@ function App() {
                           previousFullStop?.place.name ?? preparedDay.plan.startFromLabel;
                         const leaveByTime =
                           previousFullStop?.departure ?? adjustedDay.startTime;
+                        const legMode = getModeForLeg(adjustment, stop.place.id);
                         const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(stop.place);
-                        const googleStreetViewUrl = buildGoogleStreetViewUrl(stop.place);
-                        const stopPhoto = resolvePlacePhoto(
+                        const navigateNowUrl = buildGoogleMapsNavigateUrl(
                           stop.place,
-                          wikipediaPhotosById
+                          legMode
                         );
+                        const googleStreetViewUrl = buildGoogleStreetViewUrl(stop.place);
+                        const stopPhoto = resolvePlacePhoto(stop.place);
                         const nearbyStations = formatNearbyStations(stop.place);
                         const stopCardId = `${day.title}-${stop.place.id}-${stop.arrival}`;
                         const transitCardId = `${stopCardId}-transit`;
@@ -2946,7 +2804,6 @@ function App() {
                           day.title,
                           stop.arrival
                         );
-                        const legMode = getModeForLeg(adjustment, stop.place.id);
 
                         return (
                           <li className="stop-item" key={`${stop.place.id}-${stop.arrival}`}>
@@ -3048,35 +2905,16 @@ function App() {
                                       Solo dining note: {stop.place.soloDiningNote}
                                     </p>
                                   ) : null}
-                                  <div className="stop-photo-block">
-                                    <img
-                                      className="stop-photo-img"
-                                      src={stopPhoto.imageUrl}
-                                      alt={`${stopPhoto.caption}, Boston`}
-                                      loading="lazy"
-                                      onError={({ currentTarget }) => {
-                                        currentTarget.onerror = null;
-                                        currentTarget.src = buildFallbackImageUrlForPlace(
-                                          stop.place
-                                        );
-                                      }}
-                                    />
-                                    <a
-                                      className="stop-photo-source"
-                                      href={stopPhoto.sourceUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                    >
-                                      Photo source: {stopPhoto.sourceLabel}
-                                    </a>
-                                  </div>
-                                  {stop.place.isFreedomTrailStop ? (
-                                    <p className="freedom-trail-note">
-                                      Freedom Trail stop
-                                    </p>
-                                  ) : null}
                                   <div className="stop-map">
                                     <div className="map-links">
+                                      <a
+                                        className="map-open-link"
+                                        href={navigateNowUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Navigate now
+                                      </a>
                                       <a
                                         className="map-open-link"
                                         href={googleMapsPlaceUrl}
@@ -3105,6 +2943,33 @@ function App() {
                                       ) : null}
                                     </div>
                                   </div>
+                                  <div className="stop-photo-block">
+                                    <img
+                                      className="stop-photo-img"
+                                      src={stopPhoto.imageUrl}
+                                      alt={`${stopPhoto.caption}, Boston`}
+                                      loading="lazy"
+                                      onError={({ currentTarget }) => {
+                                        currentTarget.onerror = null;
+                                        currentTarget.src = buildFallbackImageUrlForPlace(
+                                          stop.place
+                                        );
+                                      }}
+                                    />
+                                    <a
+                                      className="stop-photo-source"
+                                      href={stopPhoto.sourceUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      Photo source: {stopPhoto.sourceLabel}
+                                    </a>
+                                  </div>
+                                  {stop.place.isFreedomTrailStop ? (
+                                    <p className="freedom-trail-note">
+                                      Freedom Trail stop
+                                    </p>
+                                  ) : null}
                                   {stop.bufferAfterMins ? (
                                     <p className="buffer-note">
                                       Buffer after stop: {stop.bufferAfterMins} min
