@@ -373,6 +373,14 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
     sourceLabel: "Wikimedia Commons",
     caption: "Downtown Crossing streetscape"
   },
+  "modern-pastry-gf-cannoli": {
+    imageUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/North_End,_Boston,_Massachusetts.jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:North_End,_Boston,_Massachusetts.jpg",
+    sourceLabel: "Wikimedia Commons",
+    caption: "North End streets near Modern Pastry"
+  },
   "nebo-cucina": {
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Seaport_Boulevard_and_International_Place.jpg",
@@ -433,6 +441,7 @@ const wikipediaPhotoTitleById: Partial<Record<string, string>> = {
   "verveine-cafe": "Central Square, Cambridge",
   "violette-bakers": "Harvard Square",
   "jennifer-lees": "Boston Public Market",
+  "modern-pastry-gf-cannoli": "North End, Boston",
   "nebo-cucina": "Fort Point, Boston",
   "mikes-pastry": "North End, Boston"
 };
@@ -557,8 +566,8 @@ const dayTemplateByTitle = new Map(
 const cozyCafeOptionIdsByDayTitle: Record<string, string[]> = {
   Sunday: ["kanes-downtown", "verveine-cafe", "violette-bakers"],
   Monday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"],
-  Tuesday: ["kanes-downtown", "verveine-cafe", "violette-bakers"],
-  Wednesday: ["jennifer-lees", "kanes-downtown", "violette-bakers"],
+  Tuesday: ["modern-pastry-gf-cannoli", "jennifer-lees", "nebo-cucina"],
+  Wednesday: ["modern-pastry-gf-cannoli", "nebo-cucina", "jennifer-lees"],
   Thursday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"]
 };
 const weekdayIndexByDayTitle: Record<string, number> = {
@@ -575,6 +584,11 @@ const likelyHoursByPlaceId: Partial<
   "verveine-cafe": { open: "08:00", close: "16:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "violette-bakers": { open: "08:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "jennifer-lees": { open: "08:00", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "modern-pastry-gf-cannoli": {
+    open: "08:00",
+    close: "22:00",
+    days: [0, 1, 2, 3, 4, 5, 6]
+  },
   "nebo-cucina": { open: "16:30", close: "22:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "tea-party-tea-room": { open: "11:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "freedom-trail-walk-tour": { open: "10:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] }
@@ -1143,7 +1157,7 @@ function isGlutenFreeRestaurant(place: Place): boolean {
 }
 
 function isEveningBakeryStop(place: Place): boolean {
-  return place.id === "jennifer-lees";
+  return place.id === "jennifer-lees" || place.id === "kanes-downtown";
 }
 
 function dedupePlacesById(places: Place[]): Place[] {
@@ -1243,6 +1257,7 @@ function getAdditionalCozyCafeOptions(
     .filter(
       (place) =>
         isGlutenFreeRestaurant(place) &&
+        (!isEveningOnlyPlan(day) || !isEveningBakeryStop(place)) &&
         !disabledPlaceIds.has(place.id) &&
         !visibleStopIds.has(place.id) &&
         isWithinWalkingDistance(place, walkingAnchors, extraOptionMaxWalkMins)
@@ -1255,6 +1270,7 @@ function getAdditionalCozyCafeOptions(
   return BOSTON_PLACES.filter(
     (place) =>
       isGlutenFreeRestaurant(place) &&
+      (!isEveningOnlyPlan(day) || !isEveningBakeryStop(place)) &&
       !disabledPlaceIds.has(place.id) &&
       !visibleStopIds.has(place.id) &&
       dayTemplate.targetNeighborhoods.includes(place.neighborhood) &&
@@ -1443,7 +1459,8 @@ function prepareDayForEnergyMode(
   const dayPriorityMajorIdsByTitle: Record<string, string[]> = {
     Sunday: ["tea-party-tea-room", "freedom-trail-walk-tour"],
     Monday: ["beacon-hill-stroll", "louisburg-square-loop"],
-    Tuesday: ["old-city-hall-stop", "downtown-crossing-stroll"]
+    Tuesday: ["old-south-meeting-house", "old-state-house-stop", "kings-chapel-stop"],
+    Wednesday: ["bpl-courtyard", "copley-square-trinity", "old-south-church-stop"]
   };
   const dayPriorityMajorIds = dayPriorityMajorIdsByTitle[day.title] ?? [];
   const priorityMajorPlaces = dayPriorityMajorIds

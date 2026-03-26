@@ -573,6 +573,24 @@ export const BOSTON_PLACES: Place[] = [
     glutenFreeSafe: true
   },
   {
+    id: "modern-pastry-gf-cannoli",
+    name: "Modern Pastry (GF Cannoli Option)",
+    category: "restaurant",
+    neighborhood: "North End",
+    priceLevel: "$$",
+    address: "257 Hanover St, Boston, MA 02113",
+    lat: 42.3637,
+    lng: -71.0541,
+    visitDurationMins: 35,
+    description:
+      "Historic North End pastry stop with a gluten-free cannoli shell option; confirm cross-contact handling when ordering.",
+    soloDiningNote:
+      "Quick counter ordering works well for a solo pickup-and-stroll stop.",
+    infoUrl: "https://www.modernpastry.com/cannoli-ordering.html",
+    infoLabel: "Cannoli options",
+    glutenFreeSafe: true
+  },
+  {
     id: "nebo-cucina",
     name: "Nebo Cucina & Enoteca",
     category: "restaurant",
@@ -654,10 +672,9 @@ export const DAY_TEMPLATES: DayTemplate[] = [
       "granary-burying-ground",
       "old-south-meeting-house",
       "old-city-hall-stop",
-      "boston-public-market-stop",
-      "trinity-church-interior-stop",
-      "nebo-cucina",
-      "downtown-crossing-stroll"
+      "old-state-house-stop",
+      "kings-chapel-stop",
+      "modern-pastry-gf-cannoli"
     ]
   },
   {
@@ -671,10 +688,11 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     stopIds: [
       "bpl-courtyard",
       "copley-square-trinity",
+      "trinity-church-interior-stop",
+      "old-south-church-stop",
       "newbury-street-stroll",
-      "prudential-skyline-view",
-      "charles-esplanade-walk",
-      "old-south-church-stop"
+      "boston-public-market-stop",
+      "nebo-cucina"
     ]
   },
   {
@@ -740,6 +758,7 @@ export const NEARBY_MBTA_STATIONS: Record<string, string[]> = {
   "verveine-cafe": ["Central", "Kendall/MIT"],
   "violette-bakers": ["Porter", "Alewife"],
   "jennifer-lees": ["Downtown Crossing", "Chinatown"],
+  "modern-pastry-gf-cannoli": ["Haymarket", "North Station"],
   "nebo-cucina": ["South Station", "Broadway"],
   "mikes-pastry": ["Haymarket", "North Station"],
   "airport-bos": ["Airport", "Maverick"]
