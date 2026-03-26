@@ -162,6 +162,21 @@ body {
   overflow-x: clip;
 }
 
+.app-shell,
+.hero,
+.controls,
+.control,
+.day-grid,
+.day-card,
+.day-content,
+.transit-leg,
+.stop-card,
+.return-hotel-card,
+.airport-card {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .hero {
   border: 1px solid var(--hero-border);
   border-radius: 28px;
@@ -479,6 +494,10 @@ body {
   align-items: flex-start;
 }
 
+.day-header > div {
+  min-width: 0;
+}
+
 .day-header-actions {
   display: flex;
   flex-direction: column;
@@ -527,6 +546,8 @@ body {
   padding: 0.32rem 0.62rem;
   font-size: 0.78rem;
   font-weight: 700;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .day-collapse-toggle {
@@ -837,6 +858,7 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--sea-deep);
+  overflow-wrap: anywhere;
 }
 
 .transit-collapsed-summary {
@@ -1035,6 +1057,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--sea-deep);
+  overflow-wrap: anywhere;
 }
 
 .return-hotel-metrics {
@@ -1214,6 +1237,7 @@ body {
   font-size: 0.92rem;
   color: var(--sea-deep);
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .solo-dining-note {
@@ -1614,6 +1638,10 @@ body {
   .day-header-actions {
     width: 100%;
     align-items: flex-start;
+  }
+
+  .day-header {
+    flex-wrap: wrap;
   }
 
   .day-header-controls {
