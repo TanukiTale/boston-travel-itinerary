@@ -966,6 +966,44 @@ body {
   margin: 0;
 }
 
+.add-on-dropdown-card {
+  border: 1px dashed var(--transit-border);
+  border-radius: 12px;
+  background: var(--transit-surface);
+  padding: 0.62rem 0.68rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.add-on-dropdown-field {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.add-on-dropdown-field span {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sea);
+  font-weight: 700;
+}
+
+.add-on-dropdown-field select {
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 0.46rem 0.55rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--input-surface);
+}
+
+.add-on-preview-note {
+  margin: 0.02rem 0 0;
+  font-size: 0.86rem;
+  color: var(--ink-faint);
+  line-height: 1.35;
+}
+
 .additional-sight-card {
   border-style: dashed;
 }

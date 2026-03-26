@@ -1816,6 +1816,47 @@ function buildCustomizedDayView(
   };
 }
 
+function buildReturnToHotelView(
+  finalStop: ScheduledStop,
+  dayReturnPlan: NonNullable<DayPlan["returnToHotel"]>,
+  modeInUse: TravelMode,
+  energyMode: EnergyMode
+): AdjustedReturnToHotelView {
+  const leaveByTime = finalStop.departure;
+  const leaveByMins = parseClockToMinutes(leaveByTime);
+  const darkByMins = parseClockToMinutes(dayReturnPlan.darkByTime);
+  const afterDark = leaveByMins >= darkByMins;
+  const transitBack = buildTransitEstimateBetweenPlaces(finalStop.place, HOTEL_BASE);
+  const travelMins = modeInUse === "MBTA" ? transitBack.mbtaMins : transitBack.walkMins;
+  const arriveByTime = minutesToClock(leaveByMins + travelMins);
+  const directions =
+    modeInUse === "MBTA"
+      ? buildMbtaDirections(finalStop.place, HOTEL_BASE)
+      : buildWalkDirections(finalStop.place, HOTEL_BASE);
+  const safetyNote = afterDark
+    ? modeInUse === "MBTA"
+      ? "After dark: MBTA is recommended. Stay on active platforms and main streets for the final walk."
+      : "After dark: walking is doable, but switch to MBTA if streets feel too quiet."
+    : "Before dark: keep to main streets and switch to MBTA if weather or energy changes.";
+
+  return {
+    fromPlaceName: finalStop.place.name,
+    leaveByTime,
+    arriveByTime,
+    darkByTime: dayReturnPlan.darkByTime,
+    afterDark,
+    modeInUse,
+    travelMins,
+    walkMins: transitBack.walkMins,
+    mbtaMins: transitBack.mbtaMins,
+    directions,
+    safetyNote:
+      energyMode === "TAKE_IT_SLOW"
+        ? `${safetyNote} Return a little earlier tonight for a lower-stress finish.`
+        : safetyNote
+  };
+}
+
 function getInitialTheme(): ThemeMode {
   if (typeof window === "undefined") {
     return "light";
@@ -1977,9 +2018,14 @@ function App() {
   const [collapsedSightseeingCards, setCollapsedSightseeingCards] = useState<
     Record<string, boolean>
   >({});
-  const [collapsedExtraOptionCards, setCollapsedExtraOptionCards] = useState<
-    Record<string, boolean>
-  >({});
+  const [selectedAddOnIdByDay, setSelectedAddOnIdByDay] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, ""])) as Record<
+      string,
+      string
+    >
+  );
   const [collapsedTransitCards, setCollapsedTransitCards] = useState<
     Record<string, boolean>
   >({});
@@ -2553,6 +2599,23 @@ function App() {
             visibleStops,
             dayStartPoint
           );
+          const addOnAnchors = [dayStartPoint, ...visibleStops.map((stop) => stop.place)];
+          const combinedAddOnOptions = dedupePlacesById([
+            ...additionalSightOptions,
+            ...additionalCozyCafeOptions
+          ])
+            .map((place) => ({
+              place,
+              walkMins: estimateNearestWalkMinutes(place, addOnAnchors),
+              categoryLabel: isGlutenFreeRestaurant(place)
+                ? "GF food"
+                : "Sightseeing"
+            }))
+            .sort((a, b) => a.walkMins - b.walkMins);
+          const selectedAddOnId = selectedAddOnIdByDay[day.title] ?? "";
+          const selectedAddOn = combinedAddOnOptions.find(
+            (option) => option.place.id === selectedAddOnId
+          );
           const removedPlaces = [...removedStopIds]
             .map((id) => placeById.get(id))
             .filter(
@@ -2565,6 +2628,15 @@ function App() {
           const morningRunPlan = buildMorningRunPlan(day, adjustment.energyMode);
           const isMorningRunExpanded = morningRunExpandedByDay[day.title] ?? false;
           const returnLegMode = getModeForLeg(adjustment, RETURN_TO_HOTEL_LEG_ID);
+          const visibleReturnToHotel =
+            preparedDay.plan.returnToHotel && visibleStops.length > 0
+              ? buildReturnToHotelView(
+                  visibleStops[visibleStops.length - 1],
+                  preparedDay.plan.returnToHotel,
+                  returnLegMode,
+                  adjustment.energyMode
+                )
+              : undefined;
           const returnCardId = `${day.title}-return-transit`;
           const isReturnCardCollapsed = collapsedReturnCards[returnCardId] ?? false;
           const isEnergyMenuOpen = openEnergyMenuDayTitle === day.title;
@@ -3049,290 +3121,63 @@ function App() {
                     </div>
                   ) : null}
 
-                  {additionalSightOptions.length > 0 ? (
+                  {combinedAddOnOptions.length > 0 ? (
                     <div className="additional-options-section">
                       <p className="segment-card-label sightseeing-card-label">
-                        Additional nearby sightseeing options
+                        Add-on options
                       </p>
-                      <ol className="stop-list additional-options-list">
-                        {additionalSightOptions.map((place) => {
-                          const placePhoto = resolvePlacePhoto(
-                            place,
-                            wikipediaPhotosById
-                          );
-                          const optionCardId = `${day.title}-option-${place.id}`;
-                          const isOptionCollapsed =
-                            collapsedExtraOptionCards[optionCardId] ?? true;
-                          const walkMinsFromCluster = estimateNearestWalkMinutes(place, [
-                            dayStartPoint,
-                            ...adjustedDay.stops.map((stop) => stop.place)
-                          ]);
-                          const nearbyStations = formatNearbyStations(place);
-                          const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(place);
-                          const googleStreetViewUrl = buildGoogleStreetViewUrl(place);
+                      <div className="add-on-dropdown-card">
+                        <label className="add-on-dropdown-field">
+                          <span>Choose a nearby option</span>
+                          <select
+                            value={selectedAddOnId}
+                            onChange={(event) =>
+                              setSelectedAddOnIdByDay((previous) => ({
+                                ...previous,
+                                [day.title]: event.target.value
+                              }))
+                            }
+                          >
+                            <option value="">Select add-on option</option>
+                            {combinedAddOnOptions.map((option) => (
+                              <option
+                                key={`${day.title}-addon-${option.place.id}`}
+                                value={option.place.id}
+                              >
+                                {option.place.name} - {option.walkMins} min walk (
+                                {option.categoryLabel})
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="stop-card-action-btn stop-card-add-btn"
+                          onClick={() => {
+                            if (!selectedAddOn) {
+                              return;
+                            }
 
-                          return (
-                            <li className="stop-item" key={`${day.title}-${place.id}`}>
-                              <div className="stop-card additional-sight-card">
-                                <div className="stop-card-header">
-                                  <p className="segment-card-label sightseeing-card-label">
-                                    Add-on option
-                                  </p>
-                                  <div className="stop-card-actions">
-                                    <button
-                                      type="button"
-                                      className="stop-card-action-btn stop-card-add-btn"
-                                      onClick={() => addPlaceToDay(day.title, place)}
-                                    >
-                                      Add to day
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="card-collapse-toggle"
-                                      onClick={() =>
-                                        setCollapsedExtraOptionCards((previous) => ({
-                                          ...previous,
-                                          [optionCardId]: !isOptionCollapsed
-                                        }))
-                                      }
-                                      aria-expanded={!isOptionCollapsed}
-                                      aria-label={
-                                        isOptionCollapsed
-                                          ? "Expand add-on card"
-                                          : "Collapse add-on card"
-                                      }
-                                    >
-                                      {isOptionCollapsed ? "+" : "-"}
-                                    </button>
-                                  </div>
-                                </div>
-                                <p className="stop-time">
-                                  Approx walk from today's cluster: {walkMinsFromCluster} min
-                                </p>
-                                <h3>{place.name}</h3>
-                                {place.priceLevel ? (
-                                  <p className="price-level">Cost: {place.priceLevel}</p>
-                                ) : null}
-                                {place.address ? (
-                                  <p className="stop-address">{place.address}</p>
-                                ) : null}
-                                {isOptionCollapsed ? (
-                                  <p className="stop-card-collapsed-summary">
-                                    Collapsed add-on card. Expand to view details, photo, and
-                                    links.
-                                  </p>
-                                ) : (
-                                  <>
-                                    <p>{place.description}</p>
-                                    <div className="stop-photo-block">
-                                      <img
-                                        className="stop-photo-img"
-                                        src={placePhoto.imageUrl}
-                                        alt={`${placePhoto.caption}, Boston`}
-                                        loading="lazy"
-                                        onError={({ currentTarget }) => {
-                                          currentTarget.onerror = null;
-                                          currentTarget.src = buildFallbackImageUrlForPlace(
-                                            place
-                                          );
-                                        }}
-                                      />
-                                      <a
-                                        className="stop-photo-source"
-                                        href={placePhoto.sourceUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        Photo source: {placePhoto.sourceLabel}
-                                      </a>
-                                    </div>
-                                    {place.isFreedomTrailStop ? (
-                                      <p className="freedom-trail-note">Freedom Trail stop</p>
-                                    ) : null}
-                                    <div className="stop-map">
-                                      <div className="map-links">
-                                        <a
-                                          className="map-open-link"
-                                          href={googleMapsPlaceUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                        >
-                                          Open in Google Maps
-                                        </a>
-                                        <a
-                                          className="map-street-link"
-                                          href={googleStreetViewUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                        >
-                                          Open Street View
-                                        </a>
-                                        {place.infoUrl ? (
-                                          <a
-                                            className="map-info-link"
-                                            href={place.infoUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                          >
-                                            {place.infoLabel ?? "More info"}
-                                          </a>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-                                <p className="stop-foot">
-                                  Neighborhood: {place.neighborhood} | Suggested visit{" "}
-                                  {place.visitDurationMins} min
-                                </p>
-                                {nearbyStations ? (
-                                  <p className="stop-foot">Nearest T: {nearbyStations}</p>
-                                ) : null}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
-                  ) : null}
-
-                  {additionalCozyCafeOptions.length > 0 ? (
-                    <div className="additional-options-section">
-                      <p className="segment-card-label sightseeing-card-label">
-                        Additional nearby cozy cafe options (GF-safe)
-                      </p>
-                      <ol className="stop-list additional-options-list">
-                        {additionalCozyCafeOptions.map((place) => {
-                          const placePhoto = resolvePlacePhoto(
-                            place,
-                            wikipediaPhotosById
-                          );
-                          const optionCardId = `${day.title}-option-${place.id}`;
-                          const isOptionCollapsed =
-                            collapsedExtraOptionCards[optionCardId] ?? true;
-                          const walkMinsFromCluster = estimateNearestWalkMinutes(place, [
-                            dayStartPoint,
-                            ...adjustedDay.stops.map((stop) => stop.place)
-                          ]);
-                          const nearbyStations = formatNearbyStations(place);
-                          const googleMapsPlaceUrl = buildGoogleMapsPlaceUrl(place);
-
-                          return (
-                            <li className="stop-item" key={`${day.title}-cafe-${place.id}`}>
-                              <div className="stop-card additional-sight-card">
-                                <div className="stop-card-header">
-                                  <p className="segment-card-label sightseeing-card-label">
-                                    Add-on option
-                                  </p>
-                                  <div className="stop-card-actions">
-                                    <button
-                                      type="button"
-                                      className="stop-card-action-btn stop-card-add-btn"
-                                      onClick={() => addPlaceToDay(day.title, place)}
-                                    >
-                                      Add to day
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="card-collapse-toggle"
-                                      onClick={() =>
-                                        setCollapsedExtraOptionCards((previous) => ({
-                                          ...previous,
-                                          [optionCardId]: !isOptionCollapsed
-                                        }))
-                                      }
-                                      aria-expanded={!isOptionCollapsed}
-                                      aria-label={
-                                        isOptionCollapsed
-                                          ? "Expand add-on card"
-                                          : "Collapse add-on card"
-                                      }
-                                    >
-                                      {isOptionCollapsed ? "+" : "-"}
-                                    </button>
-                                  </div>
-                                </div>
-                                <p className="stop-time">
-                                  Approx walk from today's cluster: {walkMinsFromCluster} min
-                                </p>
-                                <h3>{place.name}</h3>
-                                {place.priceLevel ? (
-                                  <p className="price-level">Cost: {place.priceLevel}</p>
-                                ) : null}
-                                {place.address ? (
-                                  <p className="stop-address">{place.address}</p>
-                                ) : null}
-                                {isOptionCollapsed ? (
-                                  <p className="stop-card-collapsed-summary">
-                                    Collapsed add-on card. Expand to view details, photo, and
-                                    links.
-                                  </p>
-                                ) : (
-                                  <>
-                                    <p>{place.description}</p>
-                                    {place.soloDiningNote ? (
-                                      <p className="solo-dining-note">
-                                        Solo dining note: {place.soloDiningNote}
-                                      </p>
-                                    ) : null}
-                                    <div className="stop-photo-block">
-                                      <img
-                                        className="stop-photo-img"
-                                        src={placePhoto.imageUrl}
-                                        alt={`${placePhoto.caption}, Boston`}
-                                        loading="lazy"
-                                        onError={({ currentTarget }) => {
-                                          currentTarget.onerror = null;
-                                          currentTarget.src = buildFallbackImageUrlForPlace(
-                                            place
-                                          );
-                                        }}
-                                      />
-                                      <a
-                                        className="stop-photo-source"
-                                        href={placePhoto.sourceUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                      >
-                                        Photo source: {placePhoto.sourceLabel}
-                                      </a>
-                                    </div>
-                                    <div className="stop-map">
-                                      <div className="map-links">
-                                        <a
-                                          className="map-open-link"
-                                          href={googleMapsPlaceUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                        >
-                                          Open in Google Maps
-                                        </a>
-                                        {place.infoUrl ? (
-                                          <a
-                                            className="map-info-link"
-                                            href={place.infoUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                          >
-                                            {place.infoLabel ?? "More info"}
-                                          </a>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-                                <p className="stop-foot">
-                                  Neighborhood: {place.neighborhood} | Suggested visit{" "}
-                                  {place.visitDurationMins} min
-                                </p>
-                                {nearbyStations ? (
-                                  <p className="stop-foot">Nearest T: {nearbyStations}</p>
-                                ) : null}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ol>
+                            addPlaceToDay(day.title, selectedAddOn.place);
+                            setSelectedAddOnIdByDay((previous) => ({
+                              ...previous,
+                              [day.title]: ""
+                            }));
+                          }}
+                          disabled={!selectedAddOn}
+                        >
+                          Add selected
+                        </button>
+                      </div>
+                      {selectedAddOn ? (
+                        <p className="add-on-preview-note">
+                          {selectedAddOn.place.description}
+                        </p>
+                      ) : (
+                        <p className="add-on-preview-note">
+                          Add-ons are filtered to stay near today's route.
+                        </p>
+                      )}
                     </div>
                   ) : null}
 
@@ -3385,12 +3230,12 @@ function App() {
                     </p>
                   ) : null}
 
-                  {!isTransitHidden && adjustedDay.returnToHotel && visibleStops.length > 0 ? (
+                  {!isTransitHidden && visibleReturnToHotel ? (
                     <div className="return-hotel-card">
                       <div className="return-hotel-header">
                         <p className="return-hotel-title">
                           Return to Hotel
-                          {adjustedDay.returnToHotel.afterDark ? " (after dark)" : ""}
+                          {visibleReturnToHotel.afterDark ? " (after dark)" : ""}
                         </p>
                         <button
                           type="button"
@@ -3413,10 +3258,10 @@ function App() {
                       </div>
                       {isReturnCardCollapsed ? (
                         <p className="transit-collapsed-summary">
-                          {toMeridiem(adjustedDay.returnToHotel.leaveByTime)} {"->"}{" "}
-                          {toMeridiem(adjustedDay.returnToHotel.arriveByTime)} |{" "}
-                          {modeLabels[adjustedDay.returnToHotel.modeInUse]}{" "}
-                          {adjustedDay.returnToHotel.travelMins} min
+                          {toMeridiem(visibleReturnToHotel.leaveByTime)} {"->"}{" "}
+                          {toMeridiem(visibleReturnToHotel.arriveByTime)} |{" "}
+                          {modeLabels[visibleReturnToHotel.modeInUse]}{" "}
+                          {visibleReturnToHotel.travelMins} min
                         </p>
                       ) : (
                         <>
@@ -3440,38 +3285,38 @@ function App() {
                           <div className="return-hotel-metrics">
                             <p>
                               <span>Depart from</span>
-                              <strong>{adjustedDay.returnToHotel.fromPlaceName}</strong>
+                              <strong>{visibleReturnToHotel.fromPlaceName}</strong>
                             </p>
                             <p>
                               <span>Leave by</span>
-                              <strong>{toMeridiem(adjustedDay.returnToHotel.leaveByTime)}</strong>
+                              <strong>{toMeridiem(visibleReturnToHotel.leaveByTime)}</strong>
                             </p>
                             <p>
                               <span>Dark by</span>
-                              <strong>{toMeridiem(adjustedDay.returnToHotel.darkByTime)}</strong>
+                              <strong>{toMeridiem(visibleReturnToHotel.darkByTime)}</strong>
                             </p>
                             <p>
                               <span>Mode in use</span>
-                              <strong>{modeLabels[adjustedDay.returnToHotel.modeInUse]}</strong>
+                              <strong>{modeLabels[visibleReturnToHotel.modeInUse]}</strong>
                             </p>
                             <p>
                               <span>Travel estimate</span>
-                              <strong>{adjustedDay.returnToHotel.travelMins} min</strong>
+                              <strong>{visibleReturnToHotel.travelMins} min</strong>
                             </p>
                             <p>
                               <span>Arrive hotel</span>
-                              <strong>{toMeridiem(adjustedDay.returnToHotel.arriveByTime)}</strong>
+                              <strong>{toMeridiem(visibleReturnToHotel.arriveByTime)}</strong>
                             </p>
                           </div>
                           <p className="return-hotel-times">
-                            Walk {adjustedDay.returnToHotel.walkMins} min | MBTA{" "}
-                            {adjustedDay.returnToHotel.mbtaMins} min
+                            Walk {visibleReturnToHotel.walkMins} min | MBTA{" "}
+                            {visibleReturnToHotel.mbtaMins} min
                           </p>
                           <p className="return-hotel-directions">
-                            {adjustedDay.returnToHotel.directions}
+                            {visibleReturnToHotel.directions}
                           </p>
                           <p className="return-hotel-safety">
-                            {adjustedDay.returnToHotel.safetyNote}
+                            {visibleReturnToHotel.safetyNote}
                           </p>
                         </>
                       )}
