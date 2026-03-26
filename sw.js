@@ -1,4 +1,4 @@
-const CACHE_NAME = "boston-time-v3";
+const CACHE_NAME = "boston-time-v4";
 const SW_PATH = self.location.pathname;
 const BASE_PATH = SW_PATH.endsWith("/sw.js")
   ? SW_PATH.slice(0, -"/sw.js".length)
