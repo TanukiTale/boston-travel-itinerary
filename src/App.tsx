@@ -488,14 +488,14 @@ function resolvePlacePhoto(
   place: Place,
   wikipediaPhotosById?: Partial<Record<string, PlacePhoto>>
 ): PlacePhoto {
-  const curated = placePhotosById[place.id];
-  if (curated) {
-    return curated;
-  }
-
   const wikipediaPhoto = wikipediaPhotosById?.[place.id];
   if (wikipediaPhoto) {
     return wikipediaPhoto;
+  }
+
+  const curated = placePhotosById[place.id];
+  if (curated) {
+    return curated;
   }
 
   if (!Number.isFinite(place.lat) || !Number.isFinite(place.lng)) {
