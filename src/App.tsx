@@ -712,13 +712,15 @@ function defaultEnergyModeForDay(day: DayPlan): EnergyMode {
 }
 
 function isMorningRunEligibleDay(day: DayPlan): boolean {
-  if (day.startFrom !== "hotel") {
+  if (day.title === "Thursday") {
     return false;
   }
 
-  const hasEveningOnlyWindow = day.availabilityLabel
-    .toLowerCase()
-    .includes("evening only");
+  if (isFullDayPlan(day)) {
+    return true;
+  }
+
+  const hasEveningOnlyWindow = isEveningOnlyPlan(day);
   const startsLate = parseClockToMinutes(day.startTime) >= 16 * 60;
 
   return hasEveningOnlyWindow || startsLate;
@@ -737,9 +739,9 @@ function buildMorningRunPlan(
   const turnaroundLabel = turnaroundPlace?.name ?? "Harborwalk turnaround point";
 
   return {
-    title: "Harbor Sunrise Run",
+    title: "Harbor Sunrise Walk / Run",
     bestTimeLabel: "Best time: 6:15 AM - 7:30 AM",
-    routeTypeLabel: "Type: Out-and-back",
+    routeTypeLabel: "Type: Out-and-back (walk or run)",
     surfaceLabel: "Surface: Paved Harborwalk",
     distanceLabel: `Distance: ${preset.distanceLabel}`,
     durationLabel: `Estimated duration: ${preset.durationLabel}`,
@@ -2885,7 +2887,7 @@ function App() {
                         </div>
                       ) : (
                         <p className="morning-run-collapsed-note">
-                          Optional Harbor Sunrise Run is available for this day.
+                          Optional Harbor Sunrise Walk / Run is available for this day.
                         </p>
                       )}
                     </section>
