@@ -132,6 +132,7 @@ body,
 body {
   margin: 0;
   min-height: 100vh;
+  font-size: 1.03rem;
   color: var(--ink);
   background:
     radial-gradient(circle at 14% 12%, var(--app-glow-a), transparent 38%),
@@ -191,7 +192,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg");
+  background-image: url("https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg");
   background-size: cover;
   background-position: center;
   opacity: 0.34;
@@ -380,7 +381,8 @@ body {
 .hero-meta-extra {
   color: var(--ink-faint);
   font-size: 0.82rem;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .conference-link {
@@ -436,6 +438,8 @@ body {
   font: inherit;
   color: var(--ink);
   background: var(--input-surface);
+  width: 100%;
+  max-width: 100%;
 }
 
 .flight-line {
@@ -1017,6 +1021,8 @@ body {
   font: inherit;
   color: var(--ink);
   background: var(--input-surface);
+  width: 100%;
+  max-width: 100%;
 }
 
 .add-on-preview-note {
@@ -1560,6 +1566,16 @@ body {
 @media (max-width: 1000px) {
   .day-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-meta-row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .hero-meta-label {
+    min-width: 0;
   }
 
   .day-header {

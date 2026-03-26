@@ -103,9 +103,9 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "state-house-stop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Beacon Hill streets near the State House"
   },
@@ -118,9 +118,9 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "beacon-hill-stroll": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Acorn Street in Beacon Hill"
   },
@@ -155,9 +155,9 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "newbury-street-stroll": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Classic Boston brownstone streets"
   },
@@ -170,9 +170,9 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "boston-athenaeum-exterior": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Beacon Hill architecture near the Athenaeum"
   },
@@ -239,17 +239,17 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
   },
   "greenway-art-walk": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Beacon Hill brick streets near the Nichols House Museum"
   },
   "louisburg-square-loop": {
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+      "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
     sourceLabel: "Wikimedia Commons",
     caption: "Louisburg Square area in Beacon Hill"
   },
@@ -448,9 +448,9 @@ const wikipediaPhotoTitleById: Partial<Record<string, string>> = {
 
 const defaultPlacePhoto = {
   imageUrl:
-    "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+    "https://commons.wikimedia.org/wiki/Special:FilePath/Acorn_Street,_Beacon_Hill,_Boston.jpg",
   sourceUrl:
-    "https://commons.wikimedia.org/wiki/File:Acorn_Street_Beacon_Hill_Boston_Massachusetts.jpg",
+    "https://commons.wikimedia.org/wiki/File:Acorn_Street,_Beacon_Hill,_Boston.jpg",
   sourceLabel: "Wikimedia Commons",
   caption: "Historic Boston streetscape"
 } as const;
