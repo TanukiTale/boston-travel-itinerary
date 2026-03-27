@@ -2068,7 +2068,7 @@ function TransitLeg({
               <strong>{toMeridiem(stop.arrival)}</strong>
             </p>
             <p>
-              <span>Mode in use</span>
+              <span>Selected mode</span>
               <strong>{modeLabel}</strong>
             </p>
             <p>
@@ -2087,21 +2087,22 @@ function TransitLeg({
             <a className="map-open-link" href={legRouteUrl} target="_blank" rel="noreferrer">
               Open this leg in Google Maps
             </a>
-            {scenicWalkWaypoint && scenicWalkRouteUrl ? (
+          </div>
+          {scenicWalkWaypoint && modeInUse === "WALK" ? (
+            <div className="scenic-route-callout">
               <a
-                className="map-open-link"
+                className="map-open-link scenic-route-link"
                 href={scenicWalkRouteUrl}
                 target="_blank"
                 rel="noreferrer"
               >
-                Scenic walk option
+                ✨ Scenic route option
               </a>
-            ) : null}
-          </div>
-          {scenicWalkWaypoint && modeInUse === "WALK" ? (
-            <p className="transit-link-note">
-              Scenic route nudges you through {scenicWalkWaypoint.label} on more active streets.
-            </p>
+              <p className="scenic-route-hint">
+                A slightly longer route with better waterfront views via{" "}
+                {scenicWalkWaypoint.label}.
+              </p>
+            </div>
           ) : null}
         </>
       )}
@@ -2731,13 +2732,16 @@ function App() {
             ? buildGoogleMapsLegRouteUrl(
                 returnFromPlace,
                 HOTEL_BASE,
-                returnLegMode,
-                returnLegMode === "WALK"
+                returnLegMode
               )
             : undefined;
           const returnScenicWalkWaypoint =
             returnFromPlace && returnLegMode === "WALK"
               ? selectScenicWalkWaypoint(returnFromPlace, HOTEL_BASE)
+              : undefined;
+          const returnScenicRouteUrl =
+            returnFromPlace && returnLegMode === "WALK" && returnScenicWalkWaypoint
+              ? buildGoogleMapsLegRouteUrl(returnFromPlace, HOTEL_BASE, "WALK", true)
               : undefined;
           const visibleReturnToHotel =
             preparedDay.plan.returnToHotel && visibleStops.length > 0
@@ -3448,7 +3452,7 @@ function App() {
                               <strong>{toMeridiem(visibleReturnToHotel.darkByTime)}</strong>
                             </p>
                             <p>
-                              <span>Mode in use</span>
+                              <span>Selected mode</span>
                               <strong>{modeLabels[visibleReturnToHotel.modeInUse]}</strong>
                             </p>
                             <p>
@@ -3482,11 +3486,21 @@ function App() {
                               </a>
                             </div>
                           ) : null}
-                          {returnScenicWalkWaypoint ? (
-                            <p className="transit-link-note">
-                              Scenic route nudges you through {returnScenicWalkWaypoint.label} on
-                              more active streets.
-                            </p>
+                          {returnScenicWalkWaypoint && returnScenicRouteUrl ? (
+                            <div className="scenic-route-callout">
+                              <a
+                                className="map-open-link scenic-route-link"
+                                href={returnScenicRouteUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                ✨ Scenic route option
+                              </a>
+                              <p className="scenic-route-hint">
+                                A slightly longer route with better waterfront views via{" "}
+                                {returnScenicWalkWaypoint.label}.
+                              </p>
+                            </div>
                           ) : null}
                         </>
                       )}

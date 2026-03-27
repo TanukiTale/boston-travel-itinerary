@@ -973,6 +973,30 @@ body {
   gap: 0.45rem;
 }
 
+.scenic-route-callout {
+  margin-top: 0.08rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-soft);
+  padding: 0.5rem 0.56rem;
+  display: grid;
+  gap: 0.24rem;
+}
+
+.scenic-route-link {
+  border-color: var(--line);
+  background: var(--mint);
+  color: var(--sea-deep);
+  font-weight: 800;
+}
+
+.scenic-route-hint {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .transit-link-note {
   margin: 0;
   color: var(--ink-faint);
