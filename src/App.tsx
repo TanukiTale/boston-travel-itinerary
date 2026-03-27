@@ -369,6 +369,14 @@ const placePhotosById: Partial<Record<string, PlacePhoto>> = {
     sourceLabel: "Wikimedia Commons",
     caption: "Boston Public Market area"
   },
+  "sweetgreen-seaport": {
+    imageUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Seaport_Boulevard_and_International_Place.jpg",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:Seaport_Boulevard_and_International_Place.jpg",
+    sourceLabel: "Wikimedia Commons",
+    caption: "Seaport Square area near Sweetgreen pickup"
+  },
   "modern-pastry-gf-cannoli": {
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/North_End,_Boston,_Massachusetts.jpg",
@@ -480,11 +488,11 @@ const dayTemplateByTitle = new Map(
   DAY_TEMPLATES.map((template) => [template.title, template])
 );
 const cozyCafeOptionIdsByDayTitle: Record<string, string[]> = {
-  Sunday: ["kanes-downtown", "verveine-cafe", "violette-bakers"],
-  Monday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"],
-  Tuesday: ["modern-pastry-gf-cannoli", "jennifer-lees", "nebo-cucina"],
-  Wednesday: ["modern-pastry-gf-cannoli", "nebo-cucina", "jennifer-lees"],
-  Thursday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"]
+  Sunday: ["sweetgreen-seaport", "kanes-downtown", "verveine-cafe"],
+  Monday: ["sweetgreen-seaport", "kanes-downtown", "jennifer-lees"],
+  Tuesday: ["modern-pastry-gf-cannoli", "sweetgreen-seaport", "jennifer-lees"],
+  Wednesday: ["modern-pastry-gf-cannoli", "sweetgreen-seaport", "nebo-cucina"],
+  Thursday: ["sweetgreen-seaport", "kanes-downtown", "jennifer-lees"]
 };
 const weekdayIndexByDayTitle: Record<string, number> = {
   Sunday: 0,
@@ -500,6 +508,7 @@ const likelyHoursByPlaceId: Partial<
   "verveine-cafe": { open: "08:00", close: "16:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "violette-bakers": { open: "08:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "jennifer-lees": { open: "08:00", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "sweetgreen-seaport": { open: "09:30", close: "22:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "modern-pastry-gf-cannoli": {
     open: "08:00",
     close: "22:00",

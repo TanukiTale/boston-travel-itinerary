@@ -573,6 +573,24 @@ export const BOSTON_PLACES: Place[] = [
     glutenFreeSafe: true
   },
   {
+    id: "sweetgreen-seaport",
+    name: "Sweetgreen (Seaport Square)",
+    category: "restaurant",
+    neighborhood: "Seaport",
+    priceLevel: "$$",
+    address: "47 Northern Ave, Boston, MA 02210",
+    lat: 42.3512,
+    lng: -71.0463,
+    visitDurationMins: 30,
+    description:
+      "Fast, customizable bowl-and-salad stop near the hotel with multiple gluten-free combinations; confirm cross-contact preferences when ordering.",
+    soloDiningNote:
+      "Excellent solo grab-and-go choice for quick pickup and an easy walk back to the hotel.",
+    infoUrl: "https://www.sweetgreen.com/locations/seaport-square",
+    infoLabel: "Location details",
+    glutenFreeSafe: true
+  },
+  {
     id: "modern-pastry-gf-cannoli",
     name: "Modern Pastry (GF Cannoli Option)",
     category: "restaurant",
@@ -657,7 +675,7 @@ export const DAY_TEMPLATES: DayTemplate[] = [
       "louisburg-square-loop",
       "kings-chapel-stop",
       "commonwealth-ave-mall",
-      "nebo-cucina"
+      "sweetgreen-seaport"
     ]
   },
   {
@@ -758,6 +776,7 @@ export const NEARBY_MBTA_STATIONS: Record<string, string[]> = {
   "verveine-cafe": ["Central", "Kendall/MIT"],
   "violette-bakers": ["Porter", "Alewife"],
   "jennifer-lees": ["Downtown Crossing", "Chinatown"],
+  "sweetgreen-seaport": ["Courthouse (SL1)", "World Trade Center (SL1)"],
   "modern-pastry-gf-cannoli": ["Haymarket", "North Station"],
   "nebo-cucina": ["South Station", "Broadway"],
   "mikes-pastry": ["Haymarket", "North Station"],
