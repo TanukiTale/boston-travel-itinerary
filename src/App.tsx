@@ -805,6 +805,91 @@ function placeToMapQuery(place: Place): string {
     : `${place.lat},${place.lng}`;
 }
 
+interface ScenicWalkWaypoint {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  neighborhoods: string[];
+}
+
+const scenicWalkWaypoints: ScenicWalkWaypoint[] = [
+  {
+    id: "fan-pier-seaport",
+    label: "Fan Pier Harborwalk",
+    lat: 42.3526,
+    lng: -71.0443,
+    neighborhoods: ["Seaport", "Waterfront"]
+  },
+  {
+    id: "long-wharf",
+    label: "Long Wharf",
+    lat: 42.3598,
+    lng: -71.0498,
+    neighborhoods: ["Waterfront", "North End", "Downtown"]
+  },
+  {
+    id: "public-garden",
+    label: "Public Garden",
+    lat: 42.3542,
+    lng: -71.0695,
+    neighborhoods: ["Beacon Hill", "Back Bay", "Downtown"]
+  },
+  {
+    id: "faneuil-hall",
+    label: "Faneuil Hall",
+    lat: 42.3601,
+    lng: -71.0568,
+    neighborhoods: ["Downtown", "North End", "Waterfront"]
+  }
+];
+
+function selectScenicWalkWaypoint(from: Place, to: Place): ScenicWalkWaypoint | undefined {
+  const fromNeighborhood = from.neighborhood.toLowerCase();
+  const toNeighborhood = to.neighborhood.toLowerCase();
+  const directDistanceKm = haversineDistanceKm(from, to);
+  let bestCandidate: ScenicWalkWaypoint | undefined;
+  let bestViaDistanceKm = Number.POSITIVE_INFINITY;
+
+  for (const waypoint of scenicWalkWaypoints) {
+    const isRelevant = waypoint.neighborhoods.some((neighborhood) => {
+      const normalized = neighborhood.toLowerCase();
+      return normalized === fromNeighborhood || normalized === toNeighborhood;
+    });
+    if (!isRelevant) {
+      continue;
+    }
+
+    const fromToWaypointKm = haversineDistanceByCoords(
+      from.lat,
+      from.lng,
+      waypoint.lat,
+      waypoint.lng
+    );
+    const waypointToDestinationKm = haversineDistanceByCoords(
+      waypoint.lat,
+      waypoint.lng,
+      to.lat,
+      to.lng
+    );
+    const viaDistanceKm = fromToWaypointKm + waypointToDestinationKm;
+    const detourKm = viaDistanceKm - directDistanceKm;
+    const isReasonableDetour =
+      detourKm <= 1.35 || (directDistanceKm >= 3.2 && detourKm <= 1.9);
+
+    if (!isReasonableDetour) {
+      continue;
+    }
+
+    if (viaDistanceKm < bestViaDistanceKm) {
+      bestViaDistanceKm = viaDistanceKm;
+      bestCandidate = waypoint;
+    }
+  }
+
+  return bestCandidate;
+}
+
 function readStoredRecord<T extends Record<string, unknown>>(
   key: string,
   defaults: T
@@ -854,6 +939,29 @@ function buildGoogleMapsNavigateUrl(
     destination: placeToMapQuery(place),
     travelmode: transportMode === "WALK" ? "walking" : "transit"
   });
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function buildGoogleMapsLegRouteUrl(
+  from: Place,
+  to: Place,
+  transportMode: TransitModePreference,
+  preferScenicWalk = false
+): string {
+  const params = new URLSearchParams({
+    api: "1",
+    origin: placeToMapQuery(from),
+    destination: placeToMapQuery(to),
+    travelmode: transportMode === "WALK" ? "walking" : "transit"
+  });
+
+  if (preferScenicWalk && transportMode === "WALK") {
+    const scenicWaypoint = selectScenicWalkWaypoint(from, to);
+    if (scenicWaypoint) {
+      params.set("waypoints", `${scenicWaypoint.lat},${scenicWaypoint.lng}`);
+    }
+  }
 
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
@@ -971,18 +1079,27 @@ function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }
 
-function haversineDistanceKm(a: Place, b: Place): number {
+function haversineDistanceByCoords(
+  fromLat: number,
+  fromLng: number,
+  toLat: number,
+  toLng: number
+): number {
   const earthRadiusKm = 6371;
-  const deltaLat = toRadians(b.lat - a.lat);
-  const deltaLng = toRadians(b.lng - a.lng);
-  const lat1 = toRadians(a.lat);
-  const lat2 = toRadians(b.lat);
+  const deltaLat = toRadians(toLat - fromLat);
+  const deltaLng = toRadians(toLng - fromLng);
+  const lat1 = toRadians(fromLat);
+  const lat2 = toRadians(toLat);
 
   const arc =
     Math.sin(deltaLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
 
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(arc));
+}
+
+function haversineDistanceKm(a: Place, b: Place): number {
+  return haversineDistanceByCoords(a.lat, a.lng, b.lat, b.lng);
 }
 
 function estimateWalkMinutesBetweenPlaces(from: Place, to: Place): number {
@@ -1859,6 +1976,7 @@ function getInitialTheme(): ThemeMode {
 
 function TransitLeg({
   stop,
+  fromPlace,
   fromLabel,
   leaveByTime,
   transportMode,
@@ -1867,6 +1985,7 @@ function TransitLeg({
   onToggleCollapse
 }: {
   stop: ScheduledStop;
+  fromPlace: Place;
   fromLabel: string;
   leaveByTime: string;
   transportMode: TransitModePreference;
@@ -1883,6 +2002,13 @@ function TransitLeg({
   const modeLabel = modeLabels[modeInUse];
   const travelMins = modeInUse === "MBTA" ? leg.mbtaMins : leg.walkMins;
   const destinationStations = formatNearbyStations(stop.place);
+  const legRouteUrl = buildGoogleMapsLegRouteUrl(fromPlace, stop.place, modeInUse);
+  const scenicWalkWaypoint =
+    modeInUse === "WALK" ? selectScenicWalkWaypoint(fromPlace, stop.place) : undefined;
+  const scenicWalkRouteUrl =
+    modeInUse === "WALK"
+      ? buildGoogleMapsLegRouteUrl(fromPlace, stop.place, "WALK", true)
+      : undefined;
   const directions =
     modeInUse === leg.recommendedMode
       ? leg.directions
@@ -1957,6 +2083,26 @@ function TransitLeg({
             <p className="transit-times">Nearest T near destination: {destinationStations}</p>
           ) : null}
           <p className="transit-directions">{directions}</p>
+          <div className="transit-map-links">
+            <a className="map-open-link" href={legRouteUrl} target="_blank" rel="noreferrer">
+              Open this leg in Google Maps
+            </a>
+            {scenicWalkWaypoint && scenicWalkRouteUrl ? (
+              <a
+                className="map-open-link"
+                href={scenicWalkRouteUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Scenic walk option
+              </a>
+            ) : null}
+          </div>
+          {scenicWalkWaypoint && modeInUse === "WALK" ? (
+            <p className="transit-link-note">
+              Scenic route nudges you through {scenicWalkWaypoint.label} on more active streets.
+            </p>
+          ) : null}
         </>
       )}
     </div>
@@ -2579,6 +2725,20 @@ function App() {
           const morningRunPlan = buildMorningRunPlan(day, adjustment.energyMode);
           const isMorningRunExpanded = morningRunExpandedByDay[day.title] ?? false;
           const returnLegMode = getModeForLeg(adjustment, RETURN_TO_HOTEL_LEG_ID);
+          const returnFromPlace =
+            visibleStops.length > 0 ? visibleStops[visibleStops.length - 1].place : undefined;
+          const returnLegRouteUrl = returnFromPlace
+            ? buildGoogleMapsLegRouteUrl(
+                returnFromPlace,
+                HOTEL_BASE,
+                returnLegMode,
+                returnLegMode === "WALK"
+              )
+            : undefined;
+          const returnScenicWalkWaypoint =
+            returnFromPlace && returnLegMode === "WALK"
+              ? selectScenicWalkWaypoint(returnFromPlace, HOTEL_BASE)
+              : undefined;
           const visibleReturnToHotel =
             preparedDay.plan.returnToHotel && visibleStops.length > 0
               ? buildReturnToHotelView(
@@ -2875,6 +3035,7 @@ function App() {
                         );
                         const previousFullStop =
                           fullStopIndex > 0 ? adjustedDay.stops[fullStopIndex - 1] : undefined;
+                        const fromPlace = previousFullStop?.place ?? dayStartPoint;
                         const fromLabel =
                           previousFullStop?.place.name ?? preparedDay.plan.startFromLabel;
                         const leaveByTime =
@@ -2906,6 +3067,7 @@ function App() {
                             {!isTransitHidden ? (
                               <TransitLeg
                                 stop={stop}
+                                fromPlace={fromPlace}
                                 fromLabel={fromLabel}
                                 leaveByTime={leaveByTime}
                                 transportMode={legMode}
@@ -3308,6 +3470,24 @@ function App() {
                           <p className="return-hotel-safety">
                             {visibleReturnToHotel.safetyNote}
                           </p>
+                          {returnLegRouteUrl ? (
+                            <div className="transit-map-links">
+                              <a
+                                className="map-open-link"
+                                href={returnLegRouteUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Open return leg in Google Maps
+                              </a>
+                            </div>
+                          ) : null}
+                          {returnScenicWalkWaypoint ? (
+                            <p className="transit-link-note">
+                              Scenic route nudges you through {returnScenicWalkWaypoint.label} on
+                              more active streets.
+                            </p>
+                          ) : null}
                         </>
                       )}
                     </div>
