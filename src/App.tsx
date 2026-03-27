@@ -777,6 +777,28 @@ interface UndoToastState {
   placeId: string;
 }
 
+function buildDefaultDayAdjustments(dayPlans: DayPlan[]): Record<string, DayTimingAdjustment> {
+  return Object.fromEntries(
+    dayPlans.map((day) => [
+      day.title,
+      {
+        startTime: day.startTime,
+        transportMode: "WALK" as const,
+        legModeByToPlaceId: {},
+        energyMode: defaultEnergyModeForDay(day),
+        durationOffsetByStopIndex: {}
+      }
+    ])
+  ) as Record<string, DayTimingAdjustment>;
+}
+
+function buildDefaultStringListByDay(dayPlans: DayPlan[]): Record<string, string[]> {
+  return Object.fromEntries(dayPlans.map((day) => [day.title, []])) as Record<
+    string,
+    string[]
+  >;
+}
+
 function placeToMapQuery(place: Place): string {
   return place.address?.trim().length
     ? `${place.name}, ${place.address}`
@@ -1941,45 +1963,53 @@ function App() {
     () => BOSTON_PLACES.filter((place) => isGlutenFreeRestaurant(place)),
     []
   );
+  const defaultDayAdjustments = useMemo(
+    () => buildDefaultDayAdjustments(itinerary.dayPlans),
+    [itinerary.dayPlans]
+  );
+  const defaultStringListByDay = useMemo(
+    () => buildDefaultStringListByDay(itinerary.dayPlans),
+    [itinerary.dayPlans]
+  );
+  const defaultCollapsedByDay = useMemo(
+    () => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, false])),
+    [itinerary.dayPlans]
+  );
+  const defaultTransitHiddenByDay = useMemo(
+    () => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, true])),
+    [itinerary.dayPlans]
+  );
+  const defaultSelectedAddOnByDay = useMemo(
+    () =>
+      Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, ""])) as Record<
+        string,
+        string
+      >,
+    [itinerary.dayPlans]
+  );
+  const defaultMorningRunExpandedByDay = useMemo(
+    () => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, false])),
+    [itinerary.dayPlans]
+  );
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
   const [selectedFlightKey, setSelectedFlightKey] = useState<"inbound" | "outbound">(
     "inbound"
   );
   const [dayAdjustments, setDayAdjustments] = useState<
     Record<string, DayTimingAdjustment>
-  >(() => {
-    const defaults = Object.fromEntries(
-      itinerary.dayPlans.map((day) => [
-        day.title,
-        {
-          startTime: day.startTime,
-          transportMode: "WALK",
-          legModeByToPlaceId: {},
-          energyMode: defaultEnergyModeForDay(day),
-          durationOffsetByStopIndex: {}
-        }
-      ])
-    ) as Record<string, DayTimingAdjustment>;
-
-    return readStoredRecord(DAY_ADJUSTMENTS_STORAGE_KEY, defaults);
-  });
-  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, false]))
+  >(() => readStoredRecord(DAY_ADJUSTMENTS_STORAGE_KEY, defaultDayAdjustments));
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>(
+    () => defaultCollapsedByDay
   );
   const [morningRunExpandedByDay, setMorningRunExpandedByDay] = useState<
     Record<string, boolean>
-  >(() => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, false])));
+  >(() => defaultMorningRunExpandedByDay);
   const [collapsedSightseeingCards, setCollapsedSightseeingCards] = useState<
     Record<string, boolean>
   >({});
   const [selectedAddOnIdByDay, setSelectedAddOnIdByDay] = useState<
     Record<string, string>
-  >(() =>
-    Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, ""])) as Record<
-      string,
-      string
-    >
-  );
+  >(() => defaultSelectedAddOnByDay);
   const [collapsedTransitCards, setCollapsedTransitCards] = useState<
     Record<string, boolean>
   >({});
@@ -1988,39 +2018,19 @@ function App() {
   >({});
   const [removedStopIdsByDay, setRemovedStopIdsByDay] = useState<
     Record<string, string[]>
-  >(() => {
-    const defaults = Object.fromEntries(
-      itinerary.dayPlans.map((day) => [day.title, []])
-    ) as Record<string, string[]>;
-    return readStoredRecord(REMOVED_STOPS_STORAGE_KEY, defaults);
-  });
+  >(() => readStoredRecord(REMOVED_STOPS_STORAGE_KEY, defaultStringListByDay));
   const [addedStopIdsByDay, setAddedStopIdsByDay] = useState<Record<string, string[]>>(
-    () => {
-      const defaults = Object.fromEntries(
-        itinerary.dayPlans.map((day) => [day.title, []])
-      ) as Record<string, string[]>;
-      return readStoredRecord(ADDED_STOPS_STORAGE_KEY, defaults);
-    }
+    () => readStoredRecord(ADDED_STOPS_STORAGE_KEY, defaultStringListByDay)
   );
   const [lockedStopIdsByDay, setLockedStopIdsByDay] = useState<
     Record<string, string[]>
-  >(() => {
-    const defaults = Object.fromEntries(
-      itinerary.dayPlans.map((day) => [day.title, []])
-    ) as Record<string, string[]>;
-    return readStoredRecord(LOCKED_STOPS_STORAGE_KEY, defaults);
-  });
+  >(() => readStoredRecord(LOCKED_STOPS_STORAGE_KEY, defaultStringListByDay));
   const [hiddenStopIdsByDay, setHiddenStopIdsByDay] = useState<
     Record<string, string[]>
-  >(() => {
-    const defaults = Object.fromEntries(
-      itinerary.dayPlans.map((day) => [day.title, []])
-    ) as Record<string, string[]>;
-    return readStoredRecord(HIDDEN_STOPS_STORAGE_KEY, defaults);
-  });
+  >(() => readStoredRecord(HIDDEN_STOPS_STORAGE_KEY, defaultStringListByDay));
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
   const [transitHiddenByDay, setTransitHiddenByDay] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(itinerary.dayPlans.map((day) => [day.title, true]))
+    () => defaultTransitHiddenByDay
   );
   const [recalibratingDayTitle, setRecalibratingDayTitle] = useState<string | null>(
     null
@@ -2029,6 +2039,9 @@ function App() {
     null
   );
   const [airportCollapsed, setAirportCollapsed] = useState(false);
+  const [photoLoadErrorByPlaceId, setPhotoLoadErrorByPlaceId] = useState<
+    Record<string, boolean>
+  >({});
   const selectedFlight = itinerary.flights[selectedFlightKey];
   const globallyExcludedSightOptionIds = useMemo(() => {
     const excluded = new Set<string>();
@@ -2222,6 +2235,13 @@ function App() {
     }));
   }
 
+  function showAllHiddenStopsForDay(dayTitle: string) {
+    setHiddenStopIdsByDay((previous) => ({
+      ...previous,
+      [dayTitle]: []
+    }));
+  }
+
   function toggleLockForDayStop(dayTitle: string, place: Place) {
     const placeId = place.id;
     if (disabledPlaceIds.has(placeId)) {
@@ -2258,6 +2278,30 @@ function App() {
     } else {
       removeAddedPlaceForDay(undoToast.dayTitle, undoToast.placeId);
     }
+    setUndoToast(null);
+  }
+
+  function resetPlannerEdits() {
+    const shouldReset = window.confirm(
+      "Reset all day edits, hidden cards, and added/removed stops back to the original plan?"
+    );
+    if (!shouldReset) {
+      return;
+    }
+
+    setDayAdjustments(defaultDayAdjustments);
+    setRemovedStopIdsByDay(defaultStringListByDay);
+    setAddedStopIdsByDay(defaultStringListByDay);
+    setLockedStopIdsByDay(defaultStringListByDay);
+    setHiddenStopIdsByDay(defaultStringListByDay);
+    setTransitHiddenByDay(defaultTransitHiddenByDay);
+    setCollapsedDays(defaultCollapsedByDay);
+    setMorningRunExpandedByDay(defaultMorningRunExpandedByDay);
+    setSelectedAddOnIdByDay(defaultSelectedAddOnByDay);
+    setCollapsedSightseeingCards({});
+    setCollapsedTransitCards({});
+    setCollapsedReturnCards({});
+    setOpenEnergyMenuDayTitle(null);
     setUndoToast(null);
   }
 
@@ -2345,11 +2389,12 @@ function App() {
     <div className="app-shell">
       <header className="hero">
         <div className="hero-top">
-          <p className="eyebrow">Boston navigation + free-time planning</p>
+          <p className="eyebrow">Navigate Boston with confidence</p>
         </div>
         <h1>Mona's Boston Time</h1>
         <p className="hero-text">
-          Clear routes, realistic timing, and curated stops so your free time is easy to use.
+          A calm, practical planner for conference week: clear directions, realistic timing, and
+          easy free-time exploration.
         </p>
         <div className="hero-actions hero-actions-below-title">
           <button
@@ -2371,24 +2416,31 @@ function App() {
           >
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
+          <button type="button" className="hero-action-btn" onClick={resetPlannerEdits}>
+            Reset day edits
+          </button>
         </div>
       </header>
 
       <section className="controls controls-top">
         <div className="control my-map-control">
-          <span>My Boston Map</span>
+          <span>Master map</span>
           <a
             className="my-map-link"
             href={myBostonMapUrl}
             target="_blank"
             rel="noreferrer"
           >
-            Open My Boston Map
+            Open master map
           </a>
           <p className="flight-line">
             {hasCustomBostonMap
               ? "Using your custom Google My Maps link."
-              : "Set VITE_MY_BOSTON_MAP_URL in .env.local to use your custom My Maps link."}
+              : "Use this as your main pinboard for quick navigation between stops."}
+          </p>
+          <p className="controls-helper">
+            Tip: tap <strong>Navigate now</strong> on each sightseeing card when you are ready to
+            move.
           </p>
         </div>
       </section>
@@ -2553,6 +2605,7 @@ function App() {
                       <button
                         type="button"
                         className="day-more-menu-btn"
+                        aria-label={`Open pace options for ${day.title}`}
                         aria-haspopup="menu"
                         aria-expanded={isEnergyMenuOpen}
                         aria-controls={energyMenuId}
@@ -2562,7 +2615,7 @@ function App() {
                           )
                         }
                       >
-                        ...
+                        Pace
                       </button>
                       {isEnergyMenuOpen ? (
                         <div
@@ -2614,7 +2667,7 @@ function App() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Open full day map
+                      Open day route in Maps
                     </a>
                     <button
                       type="button"
@@ -2649,6 +2702,9 @@ function App() {
                       : "day-content"
                   }
                 >
+                  {recalibratingDayTitle === day.title ? (
+                    <p className="recalibrating-note">Rebalancing this day...</p>
+                  ) : null}
                   <div className="day-adjust-controls">
                     <label className="day-adjust-field">
                       <span>Start time</span>
@@ -2668,7 +2724,7 @@ function App() {
                       />
                     </label>
                     <label className="day-adjust-field">
-                      <span>Default transit mode</span>
+                      <span>Default mode for this day</span>
                       <select
                         value={adjustment.transportMode}
                         onChange={(event) =>
@@ -2698,6 +2754,10 @@ function App() {
                       </select>
                     </label>
                   </div>
+                  <p className="day-adjust-help">
+                    Use these defaults to set the day baseline. You can still switch walk vs. MBTA
+                    on each transit card.
+                  </p>
 
                   {morningRunPlan ? (
                     <section className="morning-run-section">
@@ -2776,7 +2836,19 @@ function App() {
                   ) : null}
 
                   {visibleStops.length === 0 ? (
-                    <p className="empty-block">No stop fits this time window.</p>
+                    <div className="empty-block">
+                      <p>No stops fit the current settings.</p>
+                      <p>Try an earlier start time, a different pace, or add a nearby option.</p>
+                      {hiddenStops.length > 0 ? (
+                        <button
+                          type="button"
+                          className="day-collapse-toggle"
+                          onClick={() => showAllHiddenStopsForDay(day.title)}
+                        >
+                          Show hidden cards
+                        </button>
+                      ) : null}
+                    </div>
                   ) : (
                     <ol className="stop-list">
                       {visibleStops.map((stop) => {
@@ -2960,11 +3032,21 @@ function App() {
                                       loading="lazy"
                                       onError={({ currentTarget }) => {
                                         currentTarget.onerror = null;
+                                        setPhotoLoadErrorByPlaceId((previous) => ({
+                                          ...previous,
+                                          [stop.place.id]: true
+                                        }));
                                         currentTarget.src = buildFallbackImageUrlForPlace(
                                           stop.place
                                         );
                                       }}
                                     />
+                                    {photoLoadErrorByPlaceId[stop.place.id] ? (
+                                      <p className="photo-error-note">
+                                        Photo preview is temporarily unavailable. Use Navigate now
+                                        for exact routing.
+                                      </p>
+                                    ) : null}
                                     <a
                                       className="stop-photo-source"
                                       href={stopPhoto.sourceUrl}
@@ -3118,8 +3200,8 @@ function App() {
 
                   {isTransitHidden ? (
                     <p className="transit-hidden-note">
-                      Transit cards are hidden for this day. Use the day header toggle to
-                      show them again.
+                      Transit cards are hidden for a cleaner view. Use "Show transit cards" in the
+                      day header when needed.
                     </p>
                   ) : null}
 
@@ -3259,7 +3341,7 @@ function App() {
 
       <section className="controls controls-bottom">
         <div className="control flight-control">
-          <label htmlFor="flight-selector">Flight</label>
+          <label htmlFor="flight-selector">Trip flights</label>
           <select
             id="flight-selector"
             value={selectedFlightKey}
