@@ -243,6 +243,13 @@ body {
   justify-content: flex-start;
 }
 
+.hero-actions-note {
+  margin: 0.5rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .theme-toggle {
   border: 1px solid var(--toggle-border);
   border-radius: 999px;

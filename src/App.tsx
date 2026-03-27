@@ -2283,7 +2283,7 @@ function App() {
 
   function resetPlannerEdits() {
     const shouldReset = window.confirm(
-      "Reset all day edits, hidden cards, and added/removed stops back to the original plan?"
+      "Reset local custom edits on this device? This returns all days to the original itinerary defaults."
     );
     if (!shouldReset) {
       return;
@@ -2416,10 +2416,19 @@ function App() {
           >
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
-          <button type="button" className="hero-action-btn" onClick={resetPlannerEdits}>
-            Reset day edits
+          <button
+            type="button"
+            className="hero-action-btn"
+            onClick={resetPlannerEdits}
+            aria-label="Reset local custom edits on this device"
+            title="Resets only your local custom edits on this device"
+          >
+            Reset custom edits
           </button>
         </div>
+        <p className="hero-actions-note">
+          Reset only clears local custom edits on this device. Your base itinerary remains intact.
+        </p>
       </header>
 
       <section className="controls controls-top">
