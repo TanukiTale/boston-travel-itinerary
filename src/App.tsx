@@ -488,11 +488,11 @@ const dayTemplateByTitle = new Map(
   DAY_TEMPLATES.map((template) => [template.title, template])
 );
 const cozyCafeOptionIdsByDayTitle: Record<string, string[]> = {
-  Sunday: ["sweetgreen-seaport", "kanes-downtown", "verveine-cafe"],
+  Sunday: ["kanes-downtown", "verveine-cafe", "violette-bakers"],
   Monday: ["sweetgreen-seaport", "kanes-downtown", "jennifer-lees"],
   Tuesday: ["modern-pastry-gf-cannoli", "sweetgreen-seaport", "jennifer-lees"],
   Wednesday: ["modern-pastry-gf-cannoli", "sweetgreen-seaport", "nebo-cucina"],
-  Thursday: ["sweetgreen-seaport", "kanes-downtown", "jennifer-lees"]
+  Thursday: ["kanes-downtown", "jennifer-lees", "verveine-cafe"]
 };
 const weekdayIndexByDayTitle: Record<string, number> = {
   Sunday: 0,
@@ -508,7 +508,7 @@ const likelyHoursByPlaceId: Partial<
   "verveine-cafe": { open: "08:00", close: "16:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "violette-bakers": { open: "08:00", close: "17:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "jennifer-lees": { open: "08:00", close: "18:00", days: [0, 1, 2, 3, 4, 5, 6] },
-  "sweetgreen-seaport": { open: "09:30", close: "22:00", days: [0, 1, 2, 3, 4, 5, 6] },
+  "sweetgreen-seaport": { open: "10:30", close: "22:00", days: [0, 1, 2, 3, 4, 5, 6] },
   "modern-pastry-gf-cannoli": {
     open: "08:00",
     close: "22:00",
@@ -1445,7 +1445,8 @@ function prepareDayForEnergyMode(
     nonBagStops[0]?.place ??
     buildStartPointForDay(day);
   const excludeEveningBakery = isEveningOnlyPlan(day);
-  const keepDinnerAsMondayPickup = day.title === "Monday";
+  const keepDinnerAsHotelPickup = isEveningOnlyPlan(day);
+  const sweetgreenPickupPlace = placeById.get("sweetgreen-seaport");
 
   const dayGlutenFreePlaces = nonBagStops
     .map((stop) => stop.place)
@@ -1473,14 +1474,19 @@ function prepareDayForEnergyMode(
   const preferredFallbackGlutenFree = nearbyFiltered(
     dedupePlacesById(fallbackGlutenFreePlaces)
   );
-  const glutenFreeAnchor = keepDinnerAsMondayPickup ? HOTEL_BASE : anchorPlace;
+  const shouldForceSweetgreenDinnerPickup =
+    keepDinnerAsHotelPickup &&
+    sweetgreenPickupPlace !== undefined &&
+    isGlutenFreeRestaurant(sweetgreenPickupPlace);
+  const glutenFreeAnchor = keepDinnerAsHotelPickup ? HOTEL_BASE : anchorPlace;
   const selectedGlutenFreePlace =
+    (shouldForceSweetgreenDinnerPickup ? sweetgreenPickupPlace : undefined) ??
     pickNearestPlace(glutenFreeAnchor, preferredDayGlutenFree) ??
     pickNearestPlace(glutenFreeAnchor, preferredFallbackGlutenFree);
 
   const corePlaces = dedupePlacesById(selectedMajorPlaces);
   if (selectedGlutenFreePlace) {
-    if (keepDinnerAsMondayPickup) {
+    if (keepDinnerAsHotelPickup) {
       corePlaces.push(selectedGlutenFreePlace);
     } else {
       const insertionStart =
@@ -1517,9 +1523,9 @@ function prepareDayForEnergyMode(
     );
   }
 
-  if (keepDinnerAsMondayPickup) {
+  if (keepDinnerAsHotelPickup && selectedGlutenFreePlace) {
     modeNotes.push(
-      "Monday dinner is set as a pickup stop so you can bring food back to the hotel after sightseeing."
+      `Dinner is set as pickup at ${selectedGlutenFreePlace.name} on your way back to the hotel.`
     );
   }
 
