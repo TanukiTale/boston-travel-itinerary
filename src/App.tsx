@@ -34,6 +34,8 @@ const maxVisitDurationMins = 240;
 const extraOptionMaxWalkMins = 22;
 const timelineShiftStepMins = 15;
 const maxTimelineShiftMins = 120;
+const mbtaTripPlannerUrl = "https://www.mbta.com/trip-planner";
+const mbtaFaresUrl = "https://www.mbta.com/fares";
 
 interface PlacePhoto {
   imageUrl: string;
@@ -1177,6 +1179,27 @@ function buildMbtaDirections(from: Place, to: Place): string {
   return `Use MBTA from ${from.neighborhood} toward ${to.neighborhood}, then walk the final blocks.${stationHint}`;
 }
 
+function buildMbtaPaymentNote(from: Place, to: Place, directions: string): string {
+  const involvesSilverLine = /\bSL1\b|Silver Line/i.test(directions);
+  const involvesCommuterRailOrFerry = /Commuter Rail|ferry/i.test(directions);
+  const fromAirport = from.id === AIRPORT_PLACE.id || from.category === "airport";
+  const toAirport = to.id === AIRPORT_PLACE.id || to.category === "airport";
+
+  if (fromAirport && involvesSilverLine) {
+    return "Fare note: SL1 from Logan into the city is typically fare-free. If you transfer after that, tap to pay (or use a CharlieCard) for the next leg.";
+  }
+
+  if (toAirport && involvesSilverLine) {
+    return "Fare note: SL1 toward Logan is typically a paid MBTA leg. Tap to pay when available; keep a CharlieCard as backup.";
+  }
+
+  if (involvesCommuterRailOrFerry) {
+    return "Fare note: tap to pay may not cover Commuter Rail or ferry legs. Use mTicket/app or terminal ticketing for those segments.";
+  }
+
+  return "Fare note: tap to pay with a contactless card, phone, or watch on bus/subway where available. Keep a CharlieCard as backup.";
+}
+
 function pickRecommendedMode(walkMins: number, mbtaMins: number): TravelMode {
   if (walkMins <= 16) {
     return "WALK";
@@ -2033,6 +2056,7 @@ function TransitLeg({
               : ""
           }`
         : "Walk this leg via well-lit main streets; check Google Maps for the safest path.";
+  const mbtaPaymentNote = buildMbtaPaymentNote(fromPlace, stop.place, directions);
 
   return (
     <div className="transit-leg">
@@ -2127,12 +2151,7 @@ function TransitLeg({
                   : `Currently ${Math.abs(timelineShiftMins)} min earlier from here.`}
             </p>
           </div>
-          {modeInUse === "MBTA" ? (
-            <p className="transit-link-note">
-              Paying for the T: tap to pay with a contactless card, phone, or watch when available.
-              Keep a CharlieCard as backup in case a reader or station does not support tap.
-            </p>
-          ) : null}
+          {modeInUse === "MBTA" ? <p className="transit-link-note">{mbtaPaymentNote}</p> : null}
           <p className="transit-times">
             Walk {leg.walkMins} min | MBTA {leg.mbtaMins} min
           </p>
@@ -2144,6 +2163,16 @@ function TransitLeg({
             <a className="map-open-link" href={legRouteUrl} target="_blank" rel="noreferrer">
               Open this leg in Google Maps
             </a>
+            {modeInUse === "MBTA" ? (
+              <>
+                <a className="map-open-link" href={mbtaTripPlannerUrl} target="_blank" rel="noreferrer">
+                  Open MBTA trip details
+                </a>
+                <a className="map-open-link" href={mbtaFaresUrl} target="_blank" rel="noreferrer">
+                  Open MBTA fare details
+                </a>
+              </>
+            ) : null}
           </div>
           {scenicWalkWaypoint && modeInUse === "WALK" ? (
             <div className="scenic-route-callout">
@@ -3579,11 +3608,13 @@ function App() {
                             Walk {visibleReturnToHotel.walkMins} min | MBTA{" "}
                             {visibleReturnToHotel.mbtaMins} min
                           </p>
-                          {visibleReturnToHotel.modeInUse === "MBTA" ? (
+                          {visibleReturnToHotel.modeInUse === "MBTA" && returnFromPlace ? (
                             <p className="transit-link-note">
-                              Paying for the T: tap to pay with a contactless card, phone, or watch
-                              when available. Keep a CharlieCard as backup in case a reader or
-                              station does not support tap.
+                              {buildMbtaPaymentNote(
+                                returnFromPlace,
+                                HOTEL_BASE,
+                                visibleReturnToHotel.directions
+                              )}
                             </p>
                           ) : null}
                           <p className="return-hotel-directions">
@@ -3602,6 +3633,26 @@ function App() {
                               >
                                 Open return leg in Google Maps
                               </a>
+                              {visibleReturnToHotel.modeInUse === "MBTA" ? (
+                                <>
+                                  <a
+                                    className="map-open-link"
+                                    href={mbtaTripPlannerUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Open MBTA trip details
+                                  </a>
+                                  <a
+                                    className="map-open-link"
+                                    href={mbtaFaresUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Open MBTA fare details
+                                  </a>
+                                </>
+                              ) : null}
                             </div>
                           ) : null}
                           {returnScenicWalkWaypoint && returnScenicRouteUrl ? (
