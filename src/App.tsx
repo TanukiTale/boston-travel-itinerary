@@ -1414,7 +1414,7 @@ function buildRainFallbackTip(dayTitle: string): string {
     Wednesday:
       "Rain fallback nearby: Boston Public Library + Trinity Church interiors keep Back Bay walk time short.",
     Thursday:
-      "Rain fallback nearby: Boston Athenaeum exterior area plus nearby Downtown indoor stops before airport transfer."
+      "Rain fallback nearby: prioritize Custom House area + Downtown indoor stops, then return to the Westin for suitcase pickup before heading to Logan."
   };
 
   return (
@@ -1511,9 +1511,13 @@ function buildModeStops(
     const sourceStop = day.stops.find((stop) => stop.place.id === place.id);
     const baseDuration = sourceStop?.visitDurationMins ?? place.visitDurationMins;
     const isFixedGuidedTourStop = place.id === FREEDOM_TRAIL_TOUR_ID;
+    const isThursdaySuitcasePickupStop =
+      day.title === "Thursday" && place.id === HOTEL_BASE.id && sourceStop === undefined;
     const cappedDuration =
       place.id === HOTEL_BASE.id
-        ? baseDuration
+        ? isThursdaySuitcasePickupStop
+          ? 20
+          : baseDuration
         : isFixedGuidedTourStop
           ? Math.max(90, baseDuration)
         : place.category === "restaurant"
@@ -1564,7 +1568,8 @@ function prepareDayForEnergyMode(
     Sunday: ["tea-party-tea-room", "freedom-trail-walk-tour"],
     Monday: ["beacon-hill-stroll", "louisburg-square-loop"],
     Tuesday: ["old-south-meeting-house", "old-state-house-stop", "kings-chapel-stop"],
-    Wednesday: ["bpl-courtyard", "copley-square-trinity", "old-south-church-stop"]
+    Wednesday: ["bpl-courtyard", "copley-square-trinity", "old-south-church-stop"],
+    Thursday: ["boston-athenaeum-exterior", "custom-house-tower-stop", "chinatown-gateway-walk"]
   };
   const dayPriorityMajorIds = dayPriorityMajorIdsByTitle[day.title] ?? [];
   const priorityMajorPlaces = dayPriorityMajorIds
@@ -1572,7 +1577,16 @@ function prepareDayForEnergyMode(
     .filter((place): place is Place => Boolean(place));
   const remainingMajorPlaces = majorStops
     .map((stop) => stop.place)
-    .filter((place) => !priorityMajorPlaces.some((priority) => priority.id === place.id));
+    .filter((place) => !priorityMajorPlaces.some((priority) => priority.id === place.id))
+    .sort((a, b) => {
+      if (day.title !== "Thursday") {
+        return 0;
+      }
+
+      const aWaterfront = a.category === "waterfront" ? 1 : 0;
+      const bWaterfront = b.category === "waterfront" ? 1 : 0;
+      return aWaterfront - bWaterfront;
+    });
   const majorPlaceCandidates = dedupePlacesById([
     ...priorityMajorPlaces,
     ...remainingMajorPlaces
@@ -1590,15 +1604,18 @@ function prepareDayForEnergyMode(
     buildStartPointForDay(day);
   const excludeEveningBakery = isEveningOnlyPlan(day);
   const keepDinnerAsHotelPickup = isEveningOnlyPlan(day);
+  const avoidSweetgreenForThursdayMorning = day.title === "Thursday";
   const sweetgreenPickupPlace = placeById.get("sweetgreen-seaport");
 
   const dayGlutenFreePlaces = nonBagStops
     .map((stop) => stop.place)
     .filter((place) => isGlutenFreeRestaurant(place))
-    .filter((place) => !excludeEveningBakery || !isEveningBakeryStop(place));
+    .filter((place) => !excludeEveningBakery || !isEveningBakeryStop(place))
+    .filter((place) => !avoidSweetgreenForThursdayMorning || place.id !== "sweetgreen-seaport");
   const fallbackGlutenFreePlaces = glutenFreeCatalog.filter(
     (place) =>
       (!excludeEveningBakery || !isEveningBakeryStop(place)) &&
+      (!avoidSweetgreenForThursdayMorning || place.id !== "sweetgreen-seaport") &&
       !dayGlutenFreePlaces.some((dayPlace) => dayPlace.id === place.id) &&
       !selectedMajorPlaces.some((majorPlace) => majorPlace.id === place.id)
   );
@@ -1623,8 +1640,16 @@ function prepareDayForEnergyMode(
     sweetgreenPickupPlace !== undefined &&
     isGlutenFreeRestaurant(sweetgreenPickupPlace);
   const glutenFreeAnchor = keepDinnerAsHotelPickup ? HOTEL_BASE : anchorPlace;
+  const thursdayMorningGlutenFreePlace =
+    day.title === "Thursday"
+      ? pickNearestPlace(glutenFreeAnchor, [
+          ...preferredDayGlutenFree,
+          ...preferredFallbackGlutenFree
+        ])
+      : undefined;
   const selectedGlutenFreePlace =
     (shouldForceSweetgreenDinnerPickup ? sweetgreenPickupPlace : undefined) ??
+    thursdayMorningGlutenFreePlace ??
     pickNearestPlace(glutenFreeAnchor, preferredDayGlutenFree) ??
     pickNearestPlace(glutenFreeAnchor, preferredFallbackGlutenFree);
 
@@ -1642,6 +1667,12 @@ function prepareDayForEnergyMode(
       );
       corePlaces.splice(insertionIndex, 0, selectedGlutenFreePlace);
     }
+  }
+
+  const shouldAddThursdaySuitcasePickup =
+    day.title === "Thursday" && !corePlaces.some((place) => place.id === HOTEL_BASE.id);
+  if (shouldAddThursdaySuitcasePickup) {
+    corePlaces.push(HOTEL_BASE);
   }
 
   const orderedPlaces = dedupePlacesById([...bagDropPlaces, ...corePlaces]);
@@ -1670,6 +1701,18 @@ function prepareDayForEnergyMode(
   if (keepDinnerAsHotelPickup && selectedGlutenFreePlace) {
     modeNotes.push(
       `Dinner is set as pickup at ${selectedGlutenFreePlace.name} on your way back to the hotel.`
+    );
+  }
+
+  if (day.title === "Thursday") {
+    modeNotes.push(
+      "Thursday is planned for weather flexibility: keep stops compact and prioritize indoor time if rain starts."
+    );
+  }
+
+  if (shouldAddThursdaySuitcasePickup) {
+    modeNotes.push(
+      "Suitcase checkpoint added: return to the Westin before airport transfer."
     );
   }
 
@@ -2863,7 +2906,9 @@ function App() {
               ? buildGoogleMapsLegRouteUrl(returnFromPlace, HOTEL_BASE, "WALK", true)
               : undefined;
           const visibleReturnToHotel =
-            preparedDay.plan.returnToHotel && visibleStops.length > 0
+            preparedDay.plan.returnToHotel &&
+            visibleStops.length > 0 &&
+            visibleStops[visibleStops.length - 1].place.id !== HOTEL_BASE.id
               ? buildReturnToHotelView(
                   visibleStops[visibleStops.length - 1],
                   preparedDay.plan.returnToHotel,
@@ -3299,6 +3344,12 @@ function App() {
                               ) : (
                                 <>
                                   <p>{stop.place.description}</p>
+                                  {day.title === "Thursday" && stop.place.id === HOTEL_BASE.id ? (
+                                    <p className="open-status-note">
+                                      Suitcase pickup checkpoint: collect your bag here before
+                                      airport transfer.
+                                    </p>
+                                  ) : null}
                                   {likelyOpenStatus ? (
                                     <p className="open-status-note">{likelyOpenStatus}</p>
                                   ) : null}
