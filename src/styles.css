@@ -959,6 +959,54 @@ body {
   line-height: 1.2;
 }
 
+.transit-time-adjust {
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 0.46rem 0.52rem;
+  display: grid;
+  gap: 0.35rem;
+  background: var(--paper-soft);
+}
+
+.transit-time-adjust-label {
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sea);
+  font-weight: 700;
+}
+
+.transit-time-adjust-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+}
+
+.transit-time-adjust-btn {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 0.3rem 0.56rem;
+  cursor: pointer;
+}
+
+.transit-time-adjust-clear-btn {
+  background: var(--mint);
+  color: var(--sea-deep);
+}
+
+.transit-time-adjust-status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  line-height: 1.35;
+}
+
 .transit-times,
 .transit-directions {
   margin: 0;

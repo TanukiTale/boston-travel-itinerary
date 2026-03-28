@@ -32,6 +32,8 @@ const fixedArrivalByDayAndStopId: Record<string, Record<string, string>> = {
 const minVisitDurationMins = 15;
 const maxVisitDurationMins = 240;
 const extraOptionMaxWalkMins = 22;
+const timelineShiftStepMins = 15;
+const maxTimelineShiftMins = 120;
 
 interface PlacePhoto {
   imageUrl: string;
@@ -741,6 +743,7 @@ interface DayTimingAdjustment {
   legModeByToPlaceId: Record<string, TransitModePreference>;
   energyMode: EnergyMode;
   durationOffsetByStopIndex: Record<number, number>;
+  timelineShiftByStopId: Record<string, number>;
 }
 
 interface EnergyModePreparedDay {
@@ -786,7 +789,8 @@ function buildDefaultDayAdjustments(dayPlans: DayPlan[]): Record<string, DayTimi
         transportMode: "WALK" as const,
         legModeByToPlaceId: {},
         energyMode: defaultEnergyModeForDay(day),
-        durationOffsetByStopIndex: {}
+        durationOffsetByStopIndex: {},
+        timelineShiftByStopId: {}
       }
     ])
   ) as Record<string, DayTimingAdjustment>;
@@ -1674,6 +1678,8 @@ function buildAdjustedDayView(
 
   for (let stopIndex = 0; stopIndex < day.stops.length; stopIndex += 1) {
     const stop = day.stops[stopIndex];
+    const timelineShiftMins = adjustment.timelineShiftByStopId?.[stop.place.id] ?? 0;
+    cursor += timelineShiftMins;
     const legMode = getModeForLeg(adjustment, stop.place.id);
     const legMins = getTransitMinsForMode(stop, legMode);
     const tentativeArrivalMins = cursor + legMins;
@@ -1808,6 +1814,8 @@ function buildCustomizedDayView(
 
   for (let index = 0; index < orderedPlaces.length; index += 1) {
     const place = orderedPlaces[index];
+    const timelineShiftMins = adjustment.timelineShiftByStopId?.[place.id] ?? 0;
+    cursor += timelineShiftMins;
     const sourceStop = sourceStopById.get(place.id);
     const transit = buildTransitEstimateBetweenPlaces(previousPlace, place);
     const legMode = getModeForLeg(adjustment, place.id);
@@ -1982,7 +1990,10 @@ function TransitLeg({
   transportMode,
   onTransportModeChange,
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  timelineShiftMins,
+  onTimelineShift,
+  onClearTimelineShift
 }: {
   stop: ScheduledStop;
   fromPlace: Place;
@@ -1992,6 +2003,9 @@ function TransitLeg({
   onTransportModeChange: (nextMode: TransitModePreference) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  timelineShiftMins: number;
+  onTimelineShift: (deltaMins: number) => void;
+  onClearTimelineShift: () => void;
 }) {
   if (!stop.transitFromPrevious) {
     return null;
@@ -2076,6 +2090,41 @@ function TransitLeg({
             <p>
               <span>Travel estimate</span>
               <strong>{travelMins} min</strong>
+            </p>
+          </div>
+          <div className="transit-time-adjust">
+            <p className="transit-time-adjust-label">Adjust timing from this card</p>
+            <div className="transit-time-adjust-controls">
+              <button
+                type="button"
+                className="transit-time-adjust-btn"
+                onClick={() => onTimelineShift(-timelineShiftStepMins)}
+              >
+                -15 min
+              </button>
+              <button
+                type="button"
+                className="transit-time-adjust-btn"
+                onClick={() => onTimelineShift(timelineShiftStepMins)}
+              >
+                +15 min
+              </button>
+              {timelineShiftMins !== 0 ? (
+                <button
+                  type="button"
+                  className="transit-time-adjust-btn transit-time-adjust-clear-btn"
+                  onClick={onClearTimelineShift}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <p className="transit-time-adjust-status">
+              {timelineShiftMins === 0
+                ? "No timing shift set for this card."
+                : timelineShiftMins > 0
+                  ? `Currently ${timelineShiftMins} min later from here.`
+                  : `Currently ${Math.abs(timelineShiftMins)} min earlier from here.`}
             </p>
           </div>
           <p className="transit-times">
@@ -2253,7 +2302,8 @@ function App() {
       [dayTitle]: {
         ...adjustment,
         energyMode: nextMode,
-        durationOffsetByStopIndex: {}
+        durationOffsetByStopIndex: {},
+        timelineShiftByStopId: {}
       }
     }));
     setOpenEnergyMenuDayTitle(null);
@@ -2285,6 +2335,37 @@ function App() {
         [dayTitle]: {
           ...current,
           legModeByToPlaceId: nextLegModeByToPlaceId
+        }
+      };
+    });
+  }
+
+  function adjustTimelineFromStop(
+    dayTitle: string,
+    adjustment: DayTimingAdjustment,
+    stopId: string,
+    deltaMins: number
+  ) {
+    setDayAdjustments((previous) => {
+      const current = previous[dayTitle] ?? adjustment;
+      const existingShift = current.timelineShiftByStopId?.[stopId] ?? 0;
+      const nextShift = Math.max(
+        -maxTimelineShiftMins,
+        Math.min(maxTimelineShiftMins, existingShift + deltaMins)
+      );
+      const nextTimelineShiftByStopId = { ...(current.timelineShiftByStopId ?? {}) };
+
+      if (nextShift === 0) {
+        delete nextTimelineShiftByStopId[stopId];
+      } else {
+        nextTimelineShiftByStopId[stopId] = nextShift;
+      }
+
+      return {
+        ...previous,
+        [dayTitle]: {
+          ...current,
+          timelineShiftByStopId: nextTimelineShiftByStopId
         }
       };
     });
@@ -2619,7 +2700,8 @@ function App() {
             transportMode: "WALK" as const,
             legModeByToPlaceId: {},
             energyMode: defaultEnergyModeForDay(day),
-            durationOffsetByStopIndex: {}
+            durationOffsetByStopIndex: {},
+            timelineShiftByStopId: {}
           };
           const modeConfig = energyModeConfigByMode[adjustment.energyMode];
           const preparedDay = prepareDayForEnergyMode(
@@ -2939,7 +3021,7 @@ function App() {
                   </div>
                   <p className="day-adjust-help">
                     Use these defaults to set the day baseline. You can still switch walk vs. MBTA
-                    on each How to get there card.
+                    on each How to get there card and shift timing there by +/-15 minutes.
                   </p>
 
                   {morningRunPlan ? (
@@ -3092,6 +3174,25 @@ function App() {
                                     adjustment,
                                     stop.place.id,
                                     nextMode
+                                  )
+                                }
+                                timelineShiftMins={
+                                  adjustment.timelineShiftByStopId?.[stop.place.id] ?? 0
+                                }
+                                onTimelineShift={(deltaMins) =>
+                                  adjustTimelineFromStop(
+                                    day.title,
+                                    adjustment,
+                                    stop.place.id,
+                                    deltaMins
+                                  )
+                                }
+                                onClearTimelineShift={() =>
+                                  adjustTimelineFromStop(
+                                    day.title,
+                                    adjustment,
+                                    stop.place.id,
+                                    -(adjustment.timelineShiftByStopId?.[stop.place.id] ?? 0)
                                   )
                                 }
                               />
