@@ -735,7 +735,7 @@ export function generateBostonConferenceItinerary(): Itinerary {
 
   const dayPlans = DAY_TEMPLATES.map((template) => {
     const isThursday = template.key === "thursday";
-    const thursdayStopCutoff = airportPlan.recommendedLeaveHotelMins - 25;
+    const thursdayStopCutoff = airportPlan.recommendedLeaveHotelMins - 10;
 
     const { plan, filteredRestaurants } = scheduleDay(
       template,

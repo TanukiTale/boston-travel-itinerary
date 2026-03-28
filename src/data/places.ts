@@ -718,16 +718,15 @@ export const DAY_TEMPLATES: DayTemplate[] = [
     title: "Thursday",
     dateLabel: "April 2, 2026",
     availabilityLabel: "Morning available before airport transfer",
-    startTime: "07:30",
+    startTime: "08:00",
     endTime: "12:00",
-    targetNeighborhoods: ["Beacon Hill", "Downtown", "Seaport"],
+    targetNeighborhoods: ["Downtown", "Waterfront", "Seaport"],
     stopIds: [
-      "boston-athenaeum-exterior",
-      "chinatown-gateway-walk",
-      "harborwalk-seaport",
-      "custom-house-tower-stop",
-      "long-wharf-promenade",
-      "fan-pier-park-stop"
+      "boston-public-market-stop",
+      "old-state-house-stop",
+      "old-south-meeting-house",
+      "old-city-hall-stop",
+      "kanes-downtown"
     ]
   }
 ];

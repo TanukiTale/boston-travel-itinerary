@@ -712,6 +712,10 @@ function resolveMajorSegmentLimitForDay(
   energyMode: EnergyMode,
   config: EnergyModeConfig
 ): number {
+  if (day.title === "Thursday" && energyMode === "JUST_RIGHT") {
+    return Math.max(config.majorSegmentLimit, 3);
+  }
+
   if (!isFullDayPlan(day)) {
     return config.majorSegmentLimit;
   }
@@ -1414,7 +1418,7 @@ function buildRainFallbackTip(dayTitle: string): string {
     Wednesday:
       "Rain fallback nearby: Boston Public Library + Trinity Church interiors keep Back Bay walk time short.",
     Thursday:
-      "Rain fallback nearby: prioritize Custom House area + Downtown indoor stops, then return to the Westin for suitcase pickup before heading to Logan."
+      "Rain fallback nearby: keep Thursday centered on Boston Public Market + Old State House/Old South, then return to the Westin for suitcase pickup before Logan."
   };
 
   return (
@@ -1485,6 +1489,7 @@ function buildModeStops(
   config: EnergyModeConfig
 ): ScheduledStop[] {
   const startPoint = buildStartPointForDay(day);
+  const isThursdayAirportDay = day.title === "Thursday";
   let previousPlace = startPoint;
   let mbtaTransfers = 0;
   const modeStops: ScheduledStop[] = [];
@@ -1513,7 +1518,7 @@ function buildModeStops(
     const isFixedGuidedTourStop = place.id === FREEDOM_TRAIL_TOUR_ID;
     const isThursdaySuitcasePickupStop =
       day.title === "Thursday" && place.id === HOTEL_BASE.id && sourceStop === undefined;
-    const cappedDuration =
+    const cappedDurationBase =
       place.id === HOTEL_BASE.id
         ? isThursdaySuitcasePickupStop
           ? 20
@@ -1523,6 +1528,10 @@ function buildModeStops(
         : place.category === "restaurant"
           ? Math.max(minVisitDurationMins, Math.min(baseDuration, config.maxDiningVisitMins))
           : Math.max(minVisitDurationMins, Math.min(baseDuration, config.maxMajorVisitMins));
+    const cappedDuration =
+      isThursdayAirportDay && place.category !== "restaurant" && place.id !== HOTEL_BASE.id
+        ? Math.min(cappedDurationBase, 32)
+        : cappedDurationBase;
 
     modeStops.push({
       place,
@@ -1541,7 +1550,9 @@ function buildModeStops(
     const isMajorToMajor = isMajorPlace(current.place) && isMajorPlace(next.place);
 
     current.bufferAfterMins = isMajorToMajor
-      ? config.bufferBetweenMajorMins
+      ? isThursdayAirportDay
+        ? Math.min(config.bufferBetweenMajorMins, 10)
+        : config.bufferBetweenMajorMins
       : Math.max(8, config.bufferBetweenMajorMins - 5);
   }
 
@@ -1569,7 +1580,7 @@ function prepareDayForEnergyMode(
     Monday: ["beacon-hill-stroll", "louisburg-square-loop"],
     Tuesday: ["old-south-meeting-house", "old-state-house-stop", "kings-chapel-stop"],
     Wednesday: ["bpl-courtyard", "copley-square-trinity", "old-south-church-stop"],
-    Thursday: ["boston-athenaeum-exterior", "custom-house-tower-stop", "chinatown-gateway-walk"]
+    Thursday: ["boston-public-market-stop", "old-state-house-stop", "old-south-meeting-house"]
   };
   const dayPriorityMajorIds = dayPriorityMajorIdsByTitle[day.title] ?? [];
   const priorityMajorPlaces = dayPriorityMajorIds
@@ -1648,10 +1659,12 @@ function prepareDayForEnergyMode(
         ])
       : undefined;
   const selectedGlutenFreePlace =
-    (shouldForceSweetgreenDinnerPickup ? sweetgreenPickupPlace : undefined) ??
-    thursdayMorningGlutenFreePlace ??
-    pickNearestPlace(glutenFreeAnchor, preferredDayGlutenFree) ??
-    pickNearestPlace(glutenFreeAnchor, preferredFallbackGlutenFree);
+    day.title === "Thursday"
+      ? undefined
+      : (shouldForceSweetgreenDinnerPickup ? sweetgreenPickupPlace : undefined) ??
+        thursdayMorningGlutenFreePlace ??
+        pickNearestPlace(glutenFreeAnchor, preferredDayGlutenFree) ??
+        pickNearestPlace(glutenFreeAnchor, preferredFallbackGlutenFree);
 
   const corePlaces = dedupePlacesById(selectedMajorPlaces);
   if (selectedGlutenFreePlace) {
