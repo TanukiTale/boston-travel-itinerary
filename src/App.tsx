@@ -2119,7 +2119,7 @@ function TransitLeg({
                 </button>
               ) : null}
             </div>
-            <p className="transit-time-adjust-status">
+          <p className="transit-time-adjust-status">
               {timelineShiftMins === 0
                 ? "No timing shift set for this card."
                 : timelineShiftMins > 0
@@ -2127,6 +2127,12 @@ function TransitLeg({
                   : `Currently ${Math.abs(timelineShiftMins)} min earlier from here.`}
             </p>
           </div>
+          {modeInUse === "MBTA" ? (
+            <p className="transit-link-note">
+              Paying for the T: tap to pay with a contactless card, phone, or watch when available.
+              Keep a CharlieCard as backup in case a reader or station does not support tap.
+            </p>
+          ) : null}
           <p className="transit-times">
             Walk {leg.walkMins} min | MBTA {leg.mbtaMins} min
           </p>
@@ -3573,6 +3579,13 @@ function App() {
                             Walk {visibleReturnToHotel.walkMins} min | MBTA{" "}
                             {visibleReturnToHotel.mbtaMins} min
                           </p>
+                          {visibleReturnToHotel.modeInUse === "MBTA" ? (
+                            <p className="transit-link-note">
+                              Paying for the T: tap to pay with a contactless card, phone, or watch
+                              when available. Keep a CharlieCard as backup in case a reader or
+                              station does not support tap.
+                            </p>
+                          ) : null}
                           <p className="return-hotel-directions">
                             {visibleReturnToHotel.directions}
                           </p>
