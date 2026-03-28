@@ -2023,13 +2023,15 @@ function TransitLeg({
   return (
     <div className="transit-leg">
       <div className="transit-card-header">
-        <p className="segment-card-label transit-card-label">Transit card</p>
+        <p className="segment-card-label transit-card-label">How to get there</p>
         <button
           type="button"
           className="card-collapse-toggle"
           onClick={onToggleCollapse}
           aria-expanded={!isCollapsed}
-          aria-label={isCollapsed ? "Expand transit card" : "Collapse transit card"}
+          aria-label={
+            isCollapsed ? "Expand how to get there card" : "Collapse how to get there card"
+          }
         >
           {isCollapsed ? "+" : "-"}
         </button>
@@ -2838,7 +2840,9 @@ function App() {
                         }));
                       }}
                     >
-                      {isTransitHidden ? "Show transit cards" : "Hide transit cards"}
+                      {isTransitHidden
+                        ? "Show how to get there"
+                        : "Hide how to get there"}
                     </button>
                     <a
                       className="day-collapse-toggle"
@@ -2935,7 +2939,7 @@ function App() {
                   </div>
                   <p className="day-adjust-help">
                     Use these defaults to set the day baseline. You can still switch walk vs. MBTA
-                    on each transit card.
+                    on each How to get there card.
                   </p>
 
                   {morningRunPlan ? (
@@ -3381,8 +3385,8 @@ function App() {
 
                   {isTransitHidden ? (
                     <p className="transit-hidden-note">
-                      Transit cards are hidden for a cleaner view. Use "Show transit cards" in the
-                      day header when needed.
+                      How to get there cards are hidden for a cleaner view. Use "Show how to get
+                      there" in the day header when needed.
                     </p>
                   ) : null}
 
@@ -3405,8 +3409,8 @@ function App() {
                           aria-expanded={!isReturnCardCollapsed}
                           aria-label={
                             isReturnCardCollapsed
-                              ? "Expand return transit card"
-                              : "Collapse return transit card"
+                              ? "Expand return how to get there card"
+                              : "Collapse return how to get there card"
                           }
                         >
                           {isReturnCardCollapsed ? "+" : "-"}
@@ -3507,11 +3511,6 @@ function App() {
                     </div>
                   ) : null}
 
-                  <div className="notes">
-                    {preparedDay.plan.notes.map((note) => (
-                      <p key={note}>{note}</p>
-                    ))}
-                  </div>
                 </div>
               )}
             </article>
