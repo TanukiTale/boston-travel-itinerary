@@ -651,7 +651,7 @@ function defaultEnergyModeForDay(day: DayPlan): EnergyMode {
 }
 
 function isMorningRunEligibleDay(day: DayPlan): boolean {
-  if (day.title === "Sunday" || day.title === "Thursday") {
+  if (day.title === "Sunday") {
     return false;
   }
 
