@@ -799,6 +799,14 @@ interface NextStepOption {
   href: string;
 }
 
+interface QuickMoveOption {
+  id: string;
+  title: string;
+  detail: string;
+  walkMins: number;
+  href: string;
+}
+
 function buildDefaultDayAdjustments(dayPlans: DayPlan[]): Record<string, DayTimingAdjustment> {
   return Object.fromEntries(
     dayPlans.map((day) => [
@@ -2375,6 +2383,10 @@ function App() {
     Record<string, boolean>
   >({});
   const [nextStepOpen, setNextStepOpen] = useState(false);
+  const [adjustPlanOpen, setAdjustPlanOpen] = useState(false);
+  const [adjustPlanChoice, setAdjustPlanChoice] = useState<
+    "extra-time" | "shorter" | "nearby" | "indoor"
+  >("nearby");
   const [companionLocation, setCompanionLocation] = useState<CompanionLocationState>({
     status: "idle"
   });
@@ -2503,21 +2515,24 @@ function App() {
 
     return nearestPlace;
   }, [companionLocation, nextStepContext]);
+  const nextStepLastCompletedStop = nextStepContext
+    ? nextStepContext.completedStops[nextStepContext.completedStops.length - 1]
+    : undefined;
+  const nextStepNextStop = nextStepContext?.pendingStops[0];
+  const nextStepAnchorPlace =
+    nextStepLocationAnchor ??
+    nextStepLastCompletedStop?.place ??
+    nextStepNextStop?.place ??
+    nextStepContext?.dayStartPoint;
   const nextStepOptions = useMemo((): NextStepOption[] => {
-    if (!nextStepContext) {
+    if (!nextStepContext || !nextStepAnchorPlace) {
       return [];
     }
 
     const now = new Date();
     const dayPhase = getDayPhaseLabel(now);
-    const nextStop = nextStepContext.pendingStops[0];
-    const lastCompletedStop =
-      nextStepContext.completedStops[nextStepContext.completedStops.length - 1];
-    const contextPlace =
-      nextStepLocationAnchor ??
-      lastCompletedStop?.place ??
-      nextStop?.place ??
-      nextStepContext.dayStartPoint;
+    const nextStop = nextStepNextStop;
+    const contextPlace = nextStepAnchorPlace;
     const contextArea = nextStepContext.activeAreaLabel;
     const options: NextStepOption[] = [];
 
@@ -2567,7 +2582,229 @@ function App() {
     });
 
     return options.slice(0, 4);
-  }, [nextStepContext, nextStepLocationAnchor]);
+  }, [nextStepAnchorPlace, nextStepContext, nextStepNextStop]);
+  const adjustPlanSuggestions = useMemo((): NextStepOption[] => {
+    if (!nextStepContext || !nextStepAnchorPlace) {
+      return [];
+    }
+
+    const pendingStops = nextStepContext.pendingStops;
+    const nextStop = pendingStops[0];
+    const secondStop = pendingStops[1];
+    const usedStopIds = new Set([
+      ...nextStepContext.completedStops.map((stop) => stop.place.id),
+      ...pendingStops.map((stop) => stop.place.id)
+    ]);
+    const nearbyMajorOptions = BOSTON_PLACES.filter(
+      (place) =>
+        isMajorPlace(place) &&
+        !usedStopIds.has(place.id) &&
+        !disabledPlaceIds.has(place.id) &&
+        estimateWalkMinutesBetweenPlaces(nextStepAnchorPlace, place) <= 24
+    )
+      .map((place) => ({
+        place,
+        walkMins: estimateWalkMinutesBetweenPlaces(nextStepAnchorPlace, place)
+      }))
+      .sort((a, b) => a.walkMins - b.walkMins)
+      .slice(0, 3);
+    const indoorCandidates = BOSTON_PLACES.filter(
+      (place) =>
+        !usedStopIds.has(place.id) &&
+        !disabledPlaceIds.has(place.id) &&
+        (place.id === "boston-public-market-stop" ||
+          place.id === "old-state-house-stop" ||
+          place.id === "old-south-meeting-house" ||
+          place.id === "bpl-courtyard" ||
+          place.id === "trinity-church-interior-stop" ||
+          isGlutenFreeRestaurant(place))
+    )
+      .map((place) => ({
+        place,
+        walkMins: estimateWalkMinutesBetweenPlaces(nextStepAnchorPlace, place)
+      }))
+      .sort((a, b) => a.walkMins - b.walkMins)
+      .slice(0, 3);
+
+    switch (adjustPlanChoice) {
+      case "extra-time":
+        if (nearbyMajorOptions.length === 0) {
+          return [
+            {
+              id: "extra-time-search",
+              title: "Add one more nearby stop",
+              detail: "Pull a short list of nearby landmarks.",
+              href: buildGoogleMapsSearchUrl(
+                `historic landmarks near ${nextStepContext.activeAreaLabel} Boston`
+              )
+            }
+          ];
+        }
+        return nearbyMajorOptions.map((option) => ({
+          id: `extra-${option.place.id}`,
+          title: `Add: ${option.place.name}`,
+          detail: `${option.walkMins} min away. Good add-on if you're ahead of schedule.`,
+          href: buildGoogleMapsNavigateUrl(option.place, "WALK")
+        }));
+      case "shorter":
+        return [
+          nextStop
+            ? {
+                id: "shorter-next-stop",
+                title: `Go straight to ${nextStop.place.name}`,
+                detail: "Skip extras and stay on the core plan.",
+                href: buildGoogleMapsNavigateUrl(
+                  nextStop.place,
+                  getModeForLeg(nextStepContext.adjustment, nextStop.place.id)
+                )
+              }
+            : undefined,
+          secondStop
+            ? {
+                id: "shorter-skip-one",
+                title: `Skip ahead to ${secondStop.place.name}`,
+                detail: "Shorten the day by cutting one intermediate stop.",
+                href: buildGoogleMapsNavigateUrl(
+                  secondStop.place,
+                  getModeForLeg(nextStepContext.adjustment, secondStop.place.id)
+                )
+              }
+            : undefined,
+          {
+            id: "shorter-return-hotel",
+            title: "Return to hotel now",
+            detail: "Cut the route and save energy for later.",
+            href: buildGoogleMapsLegRouteUrl(
+              nextStepAnchorPlace,
+              HOTEL_BASE,
+              "WALK"
+            )
+          },
+          {
+            id: "shorter-transit",
+            title: "Switch this next leg to MBTA",
+            detail: "Reduce walking for the next move.",
+            href: nextStop
+              ? buildGoogleMapsLegRouteUrl(nextStepAnchorPlace, nextStop.place, "MBTA")
+              : buildGoogleMapsSearchUrl(`mbta stations near ${nextStepContext.activeAreaLabel}`)
+          }
+        ].filter((option): option is NextStepOption => option !== undefined);
+      case "indoor":
+        return indoorCandidates.length > 0
+          ? indoorCandidates.map((option) => ({
+              id: `indoor-${option.place.id}`,
+              title: option.place.name,
+              detail: `${option.walkMins} min away. Indoor-friendly if weather turns.`,
+              href: buildGoogleMapsNavigateUrl(option.place, "WALK")
+            }))
+          : [
+              {
+                id: "indoor-search",
+                title: "Find indoor options nearby",
+                detail: "Museums, markets, and cafes near your current area.",
+                href: buildGoogleMapsSearchUrl(
+                  `indoor attractions near ${nextStepContext.activeAreaLabel} Boston`
+                )
+              }
+            ];
+      case "nearby":
+      default:
+        return [
+          {
+            id: "nearby-coffee",
+            title: "Closest coffee option",
+            detail: "Keep the next move short and easy.",
+            href: buildGoogleMapsSearchUrl(`coffee near ${nextStepAnchorPlace.name}, Boston`)
+          },
+          {
+            id: "nearby-gf-food",
+            title: "Closest gluten-free food",
+            detail: "Quick pickup with minimal detour.",
+            href: buildGoogleMapsSearchUrl(
+              `gluten free food near ${nextStepAnchorPlace.name}, Boston`
+            )
+          },
+          nextStop
+            ? {
+                id: "nearby-continue",
+                title: `Continue to ${nextStop.place.name}`,
+                detail: "Stay near your day route without backtracking.",
+                href: buildGoogleMapsNavigateUrl(nextStop.place, "WALK")
+              }
+            : {
+                id: "nearby-search",
+                title: "Find nearby highlights",
+                detail: "Short-list options within a compact area.",
+                href: buildGoogleMapsSearchUrl(
+                  `things to do near ${nextStepContext.activeAreaLabel} Boston`
+                )
+              }
+        ];
+    }
+  }, [adjustPlanChoice, nextStepAnchorPlace, nextStepContext]);
+  const keepMovingOptions = useMemo((): QuickMoveOption[] => {
+    if (!nextStepContext || !nextStepAnchorPlace) {
+      return [];
+    }
+
+    const usedStopIds = new Set(nextStepContext.day.stops.map((stop) => stop.place.id));
+    const candidates = BOSTON_PLACES.filter(
+      (place) =>
+        !disabledPlaceIds.has(place.id) &&
+        !usedStopIds.has(place.id) &&
+        place.id !== nextStepAnchorPlace.id &&
+        place.category !== "conference" &&
+        place.category !== "airport"
+    )
+      .map((place) => ({
+        place,
+        walkMins: estimateWalkMinutesBetweenPlaces(nextStepAnchorPlace, place)
+      }))
+      .filter((entry) => entry.walkMins >= 5 && entry.walkMins <= 10)
+      .sort((a, b) => a.walkMins - b.walkMins);
+    const fallbackCandidates =
+      candidates.length > 0
+        ? candidates
+        : BOSTON_PLACES.filter(
+            (place) =>
+              !disabledPlaceIds.has(place.id) &&
+              !usedStopIds.has(place.id) &&
+              place.id !== nextStepAnchorPlace.id &&
+              place.category !== "conference" &&
+              place.category !== "airport"
+          )
+            .map((place) => ({
+              place,
+              walkMins: estimateWalkMinutesBetweenPlaces(nextStepAnchorPlace, place)
+            }))
+            .filter((entry) => entry.walkMins <= 12)
+            .sort((a, b) => a.walkMins - b.walkMins);
+    const picked: QuickMoveOption[] = [];
+    const usedCategories = new Set<string>();
+    for (const candidate of fallbackCandidates) {
+      if (picked.length >= 5) {
+        break;
+      }
+      if (usedCategories.has(candidate.place.category) && candidate.walkMins > 8) {
+        continue;
+      }
+      usedCategories.add(candidate.place.category);
+      picked.push({
+        id: `quick-${candidate.place.id}`,
+        title: candidate.place.name,
+        detail:
+          candidate.place.category === "restaurant"
+            ? "Quick coffee/food stop"
+            : candidate.place.category === "waterfront"
+              ? "Short scenic reset"
+              : "Quick landmark pause",
+        walkMins: candidate.walkMins,
+        href: buildGoogleMapsNavigateUrl(candidate.place, "WALK")
+      });
+    }
+
+    return picked;
+  }, [nextStepAnchorPlace, nextStepContext]);
   const nextStepHelperText = useMemo(() => {
     if (!nextStepContext) {
       return "Looking for something nearby?";
@@ -2577,7 +2814,7 @@ function App() {
       return `Based on your location near ${nextStepLocationAnchor.name}.`;
     }
 
-    const nextStop = nextStepContext.pendingStops[0];
+    const nextStop = nextStepNextStop;
     const todayTitle = getTodayDayTitle(new Date());
     if (nextStop && nextStepContext.day.title === todayTitle) {
       const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
@@ -2587,12 +2824,10 @@ function App() {
       }
     }
 
-    return nextStepContext.completedStops.length > 0
-      ? `Last completed stop: ${
-          nextStepContext.completedStops[nextStepContext.completedStops.length - 1].place.name
-        }.`
+    return nextStepLastCompletedStop
+      ? `Last completed stop: ${nextStepLastCompletedStop.place.name}.`
       : "Looking for something nearby?";
-  }, [nextStepContext, nextStepLocationAnchor]);
+  }, [nextStepContext, nextStepLastCompletedStop, nextStepLocationAnchor, nextStepNextStop]);
   const nextStepLocationStatus = useMemo(() => {
     switch (companionLocation.status) {
       case "locating":
@@ -3147,6 +3382,126 @@ function App() {
               Tap to get quick options based on time, your day plan, and where you are.
             </p>
           )}
+        </div>
+      </section>
+
+      <section className="adjust-plan-section" aria-label="Adjust my plan">
+        <div className="adjust-plan-card">
+          <div className="adjust-plan-header">
+            <p className="adjust-plan-title">Adjust my plan</p>
+            <button
+              type="button"
+              className="day-collapse-toggle"
+              onClick={() => setAdjustPlanOpen((previous) => !previous)}
+              aria-expanded={adjustPlanOpen}
+              aria-controls="adjust-plan-content"
+            >
+              {adjustPlanOpen ? "Hide adjustments" : "Show adjustments"}
+            </button>
+          </div>
+          <p className="adjust-plan-helper">
+            Quick recalibration options based on your current context.
+          </p>
+          {adjustPlanOpen ? (
+            <div id="adjust-plan-content" className="adjust-plan-content">
+              <div className="adjust-plan-pills">
+                <button
+                  type="button"
+                  className={
+                    adjustPlanChoice === "extra-time"
+                      ? "adjust-plan-pill adjust-plan-pill-active"
+                      : "adjust-plan-pill"
+                  }
+                  onClick={() => setAdjustPlanChoice("extra-time")}
+                >
+                  I have extra time
+                </button>
+                <button
+                  type="button"
+                  className={
+                    adjustPlanChoice === "shorter"
+                      ? "adjust-plan-pill adjust-plan-pill-active"
+                      : "adjust-plan-pill"
+                  }
+                  onClick={() => setAdjustPlanChoice("shorter")}
+                >
+                  I want something shorter
+                </button>
+                <button
+                  type="button"
+                  className={
+                    adjustPlanChoice === "nearby"
+                      ? "adjust-plan-pill adjust-plan-pill-active"
+                      : "adjust-plan-pill"
+                  }
+                  onClick={() => setAdjustPlanChoice("nearby")}
+                >
+                  I want something nearby
+                </button>
+                <button
+                  type="button"
+                  className={
+                    adjustPlanChoice === "indoor"
+                      ? "adjust-plan-pill adjust-plan-pill-active"
+                      : "adjust-plan-pill"
+                  }
+                  onClick={() => setAdjustPlanChoice("indoor")}
+                >
+                  I want indoor options
+                </button>
+              </div>
+              <div className="adjust-plan-suggestions">
+                {adjustPlanSuggestions.map((option) => (
+                  <a
+                    key={option.id}
+                    className="adjust-plan-option"
+                    href={option.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <strong>{option.title}</strong>
+                    <span>{option.detail}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="adjust-plan-collapsed-note">
+              Choose a mode to shorten, simplify, or expand your next moves.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="keep-moving-section" aria-label="Keep it moving">
+        <div className="keep-moving-card">
+          <div className="keep-moving-header">
+            <p className="keep-moving-title">Keep it moving</p>
+            <p className="keep-moving-meta">Quick options around 5-10 minutes away</p>
+          </div>
+          <div className="keep-moving-list">
+            {keepMovingOptions.length > 0 ? (
+              keepMovingOptions.map((option) => (
+                <a
+                  key={option.id}
+                  className="keep-moving-item"
+                  href={option.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <strong>{option.title}</strong>
+                  <span>
+                    {option.walkMins} min walk | {option.detail}
+                  </span>
+                </a>
+              ))
+            ) : (
+              <p className="next-step-collapsed-note">
+                No 5-10 minute quick options right now. Use "What should I do next?" for broader
+                nearby picks.
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
