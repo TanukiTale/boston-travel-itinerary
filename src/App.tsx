@@ -786,6 +786,19 @@ interface UndoToastState {
   placeId: string;
 }
 
+interface CompanionLocationState {
+  status: "idle" | "locating" | "ready" | "unavailable" | "denied" | "error";
+  lat?: number;
+  lng?: number;
+}
+
+interface NextStepOption {
+  id: string;
+  title: string;
+  detail: string;
+  href: string;
+}
+
 function buildDefaultDayAdjustments(dayPlans: DayPlan[]): Record<string, DayTimingAdjustment> {
   return Object.fromEntries(
     dayPlans.map((day) => [
@@ -940,6 +953,15 @@ function buildGoogleMapsPlaceUrl(place: Place): string {
   return `https://www.google.com/maps/search/?${params.toString()}`;
 }
 
+function buildGoogleMapsSearchUrl(query: string): string {
+  const params = new URLSearchParams({
+    api: "1",
+    query
+  });
+
+  return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
 function buildGoogleMapsNavigateUrl(
   place: Place,
   transportMode: TransitModePreference
@@ -1027,6 +1049,21 @@ function toMeridiem(clock24: string): string {
   const normalizedHour = hours % 12 || 12;
 
   return `${normalizedHour}:${minutes} ${meridiem}`;
+}
+
+function getDayPhaseLabel(now: Date): "Morning" | "Afternoon" | "Evening" {
+  const hour = now.getHours();
+  if (hour < 12) {
+    return "Morning";
+  }
+  if (hour < 17) {
+    return "Afternoon";
+  }
+  return "Evening";
+}
+
+function getTodayDayTitle(now: Date): string {
+  return now.toLocaleDateString("en-US", { weekday: "long" });
 }
 
 function parseClockToMinutes(value: string): number {
@@ -2337,7 +2374,243 @@ function App() {
   const [photoLoadErrorByPlaceId, setPhotoLoadErrorByPlaceId] = useState<
     Record<string, boolean>
   >({});
+  const [nextStepOpen, setNextStepOpen] = useState(false);
+  const [companionLocation, setCompanionLocation] = useState<CompanionLocationState>({
+    status: "idle"
+  });
   const selectedFlight = itinerary.flights[selectedFlightKey];
+  const nextStepContext = useMemo(() => {
+    const todayTitle = getTodayDayTitle(new Date());
+    const firstExpandedDay = itinerary.dayPlans.find(
+      (day) => !(collapsedDays[day.title] ?? false)
+    );
+    const activeDayTemplate =
+      itinerary.dayPlans.find((day) => day.title === todayTitle) ??
+      firstExpandedDay ??
+      itinerary.dayPlans[0];
+
+    if (!activeDayTemplate) {
+      return undefined;
+    }
+
+    const adjustment = dayAdjustments[activeDayTemplate.title] ?? {
+      startTime: activeDayTemplate.startTime,
+      transportMode: "WALK" as const,
+      legModeByToPlaceId: {},
+      energyMode: defaultEnergyModeForDay(activeDayTemplate),
+      durationOffsetByStopIndex: {},
+      timelineShiftByStopId: {}
+    };
+    const modeConfig = energyModeConfigByMode[adjustment.energyMode];
+    const preparedDay = prepareDayForEnergyMode(
+      activeDayTemplate,
+      adjustment.energyMode,
+      glutenFreeCatalog
+    );
+    const baseAdjustedDay = buildAdjustedDayView(
+      preparedDay.plan,
+      adjustment,
+      modeConfig,
+      preparedDay.optionalSuggestion
+    );
+    const lockedStopIds = lockedStopIdsByDay[activeDayTemplate.title] ?? [];
+    const lockedStopIdSet = new Set(lockedStopIds);
+    const removedStopIds = new Set(
+      (removedStopIdsByDay[activeDayTemplate.title] ?? []).filter(
+        (stopId) => !lockedStopIdSet.has(stopId)
+      )
+    );
+    const lockedPlaces = lockedStopIds
+      .map((placeId) => placeById.get(placeId))
+      .filter(
+        (place): place is Place => place !== undefined && !disabledPlaceIds.has(place.id)
+      );
+    const addedPlaces = (addedStopIdsByDay[activeDayTemplate.title] ?? [])
+      .map((placeId) => placeById.get(placeId))
+      .filter(
+        (place): place is Place => place !== undefined && !disabledPlaceIds.has(place.id)
+      );
+    const adjustedDay = buildCustomizedDayView(
+      preparedDay.plan,
+      baseAdjustedDay,
+      adjustment,
+      modeConfig,
+      lockedPlaces,
+      addedPlaces,
+      removedStopIds
+    );
+    const hiddenStopIdSet = new Set(hiddenStopIdsByDay[activeDayTemplate.title] ?? []);
+    const completedStops = adjustedDay.stops.filter((stop) =>
+      hiddenStopIdSet.has(stop.place.id)
+    );
+    const pendingStops = adjustedDay.stops.filter(
+      (stop) => !hiddenStopIdSet.has(stop.place.id)
+    );
+    const dayStartPoint = buildStartPointForDay(preparedDay.plan);
+    const activeAreaLabel =
+      preparedDay.plan.clusterLabel ||
+      pendingStops[0]?.place.neighborhood ||
+      dayStartPoint.neighborhood;
+
+    return {
+      day: preparedDay.plan,
+      adjustment,
+      completedStops,
+      pendingStops,
+      dayStartPoint,
+      activeAreaLabel
+    };
+  }, [
+    itinerary.dayPlans,
+    collapsedDays,
+    dayAdjustments,
+    glutenFreeCatalog,
+    lockedStopIdsByDay,
+    removedStopIdsByDay,
+    addedStopIdsByDay,
+    hiddenStopIdsByDay
+  ]);
+  const nextStepLocationAnchor = useMemo(() => {
+    if (
+      companionLocation.status !== "ready" ||
+      companionLocation.lat === undefined ||
+      companionLocation.lng === undefined ||
+      !nextStepContext
+    ) {
+      return undefined;
+    }
+
+    const candidatePlaces = dedupePlacesById([
+      nextStepContext.dayStartPoint,
+      ...nextStepContext.pendingStops.map((stop) => stop.place),
+      ...nextStepContext.completedStops.map((stop) => stop.place)
+    ]);
+    let nearestPlace: Place | undefined;
+    let nearestDistanceKm = Number.POSITIVE_INFINITY;
+
+    for (const place of candidatePlaces) {
+      const distanceKm = haversineDistanceByCoords(
+        companionLocation.lat,
+        companionLocation.lng,
+        place.lat,
+        place.lng
+      );
+      if (distanceKm < nearestDistanceKm) {
+        nearestDistanceKm = distanceKm;
+        nearestPlace = place;
+      }
+    }
+
+    return nearestPlace;
+  }, [companionLocation, nextStepContext]);
+  const nextStepOptions = useMemo((): NextStepOption[] => {
+    if (!nextStepContext) {
+      return [];
+    }
+
+    const now = new Date();
+    const dayPhase = getDayPhaseLabel(now);
+    const nextStop = nextStepContext.pendingStops[0];
+    const lastCompletedStop =
+      nextStepContext.completedStops[nextStepContext.completedStops.length - 1];
+    const contextPlace =
+      nextStepLocationAnchor ??
+      lastCompletedStop?.place ??
+      nextStop?.place ??
+      nextStepContext.dayStartPoint;
+    const contextArea = nextStepContext.activeAreaLabel;
+    const options: NextStepOption[] = [];
+
+    if (nextStop) {
+      options.push({
+        id: "continue-itinerary",
+        title: "Continue itinerary",
+        detail: `Head to ${nextStop.place.name}${
+          nextStop.arrival ? ` by ${toMeridiem(nextStop.arrival)}` : ""
+        }.`,
+        href: buildGoogleMapsNavigateUrl(
+          nextStop.place,
+          getModeForLeg(nextStepContext.adjustment, nextStop.place.id)
+        )
+      });
+    }
+
+    options.push({
+      id: "coffee-nearby",
+      title: "Coffee nearby",
+      detail: `Quick stop around ${contextPlace.neighborhood}.`,
+      href: buildGoogleMapsSearchUrl(`coffee near ${contextPlace.name}, Boston`)
+    });
+
+    const scenicHref =
+      nextStop && contextPlace.id !== nextStop.place.id
+        ? buildGoogleMapsLegRouteUrl(contextPlace, nextStop.place, "WALK", true)
+        : buildGoogleMapsSearchUrl(`scenic walk near ${contextArea} Boston harborwalk`);
+    options.push({
+      id: "scenic-walk",
+      title: "Scenic walk",
+      detail: "A slightly longer route with better waterfront views.",
+      href: scenicHref
+    });
+
+    const foodQuery =
+      dayPhase === "Morning"
+        ? `gluten free breakfast near ${contextArea} Boston`
+        : dayPhase === "Afternoon"
+          ? `gluten free lunch near ${contextArea} Boston`
+          : `gluten free dinner takeout near ${contextArea} Boston`;
+    options.push({
+      id: "food-options",
+      title: "Food options",
+      detail: "Gluten-free nearby options with quick pickup.",
+      href: buildGoogleMapsSearchUrl(foodQuery)
+    });
+
+    return options.slice(0, 4);
+  }, [nextStepContext, nextStepLocationAnchor]);
+  const nextStepHelperText = useMemo(() => {
+    if (!nextStepContext) {
+      return "Looking for something nearby?";
+    }
+
+    if (nextStepLocationAnchor) {
+      return `Based on your location near ${nextStepLocationAnchor.name}.`;
+    }
+
+    const nextStop = nextStepContext.pendingStops[0];
+    const todayTitle = getTodayDayTitle(new Date());
+    if (nextStop && nextStepContext.day.title === todayTitle) {
+      const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+      const nextArrivalMins = parseClockToMinutes(nextStop.arrival);
+      if (nowMins + 15 < nextArrivalMins) {
+        return "You're ahead of schedule.";
+      }
+    }
+
+    return nextStepContext.completedStops.length > 0
+      ? `Last completed stop: ${
+          nextStepContext.completedStops[nextStepContext.completedStops.length - 1].place.name
+        }.`
+      : "Looking for something nearby?";
+  }, [nextStepContext, nextStepLocationAnchor]);
+  const nextStepLocationStatus = useMemo(() => {
+    switch (companionLocation.status) {
+      case "locating":
+        return "Finding your location...";
+      case "ready":
+        return nextStepLocationAnchor
+          ? `Location matched near ${nextStepLocationAnchor.name}.`
+          : "Location ready.";
+      case "denied":
+        return "Location permission denied. Using today's area instead.";
+      case "unavailable":
+        return "Location is not available on this device.";
+      case "error":
+        return "Could not get location. Using today's area instead.";
+      default:
+        return "Using your current day area by default.";
+    }
+  }, [companionLocation.status, nextStepLocationAnchor]);
   const globallyExcludedSightOptionIds = useMemo(() => {
     const excluded = new Set<string>();
     let hasFreedomTrailTour = false;
@@ -2595,6 +2868,39 @@ function App() {
     }));
   }
 
+  function requestCompanionLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setCompanionLocation({ status: "unavailable" });
+      return;
+    }
+
+    setCompanionLocation((previous) => ({
+      ...previous,
+      status: "locating"
+    }));
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCompanionLocation({
+          status: "ready",
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setCompanionLocation({ status: "denied" });
+          return;
+        }
+        setCompanionLocation({ status: "error" });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 9000,
+        maximumAge: 120000
+      }
+    );
+  }
+
   function handleUndoToast() {
     if (!undoToast) {
       return;
@@ -2712,6 +3018,8 @@ function App() {
     };
   }, []);
 
+  const nextStepDayPhase = getDayPhaseLabel(new Date());
+
   return (
     <div className="app-shell">
       <header className="hero">
@@ -2778,6 +3086,67 @@ function App() {
             Tip: tap <strong>Navigate now</strong> on each sightseeing card when you are ready to
             move.
           </p>
+        </div>
+      </section>
+
+      <section className="next-step-section" aria-label="What should I do next">
+        <div className="next-step-card">
+          <div className="next-step-header">
+            <p className="next-step-title">What should I do next?</p>
+            <button
+              type="button"
+              className="day-collapse-toggle"
+              onClick={() => setNextStepOpen((previous) => !previous)}
+              aria-expanded={nextStepOpen}
+              aria-controls="next-step-content"
+            >
+              {nextStepOpen ? "Hide options" : "Show options"}
+            </button>
+          </div>
+          <p className="next-step-helper">{nextStepHelperText}</p>
+          {nextStepContext ? (
+            <p className="next-step-meta">
+              {nextStepDayPhase} now | {nextStepContext.day.title} | {nextStepContext.activeAreaLabel}
+            </p>
+          ) : (
+            <p className="next-step-meta">Looking for something nearby?</p>
+          )}
+
+          {nextStepOpen ? (
+            <div id="next-step-content" className="next-step-content">
+              <div className="next-step-controls">
+                <button
+                  type="button"
+                  className="next-step-location-btn"
+                  onClick={requestCompanionLocation}
+                  disabled={companionLocation.status === "locating"}
+                >
+                  {companionLocation.status === "locating"
+                    ? "Finding location..."
+                    : "Use my location"}
+                </button>
+                <p className="next-step-location-note">{nextStepLocationStatus}</p>
+              </div>
+              <div className="next-step-options">
+                {nextStepOptions.map((option) => (
+                  <a
+                    key={option.id}
+                    className="next-step-option"
+                    href={option.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <strong>{option.title}</strong>
+                    <span>{option.detail}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="next-step-collapsed-note">
+              Tap to get quick options based on time, your day plan, and where you are.
+            </p>
+          )}
         </div>
       </section>
 

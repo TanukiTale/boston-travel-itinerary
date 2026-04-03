@@ -491,6 +491,113 @@ body {
   line-height: 1.35;
 }
 
+.next-step-section {
+  margin-top: 0.9rem;
+}
+
+.next-step-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  background: var(--panel-surface);
+  padding: 0.82rem 0.9rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.next-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.next-step-title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--sea-deep);
+}
+
+.next-step-helper,
+.next-step-meta,
+.next-step-collapsed-note,
+.next-step-location-note {
+  margin: 0;
+  color: var(--ink-faint);
+  line-height: 1.35;
+}
+
+.next-step-helper {
+  font-size: 0.95rem;
+  color: var(--sea-deep);
+  font-weight: 700;
+}
+
+.next-step-meta {
+  font-size: 0.84rem;
+}
+
+.next-step-content {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.next-step-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.next-step-location-btn {
+  border: 1px solid var(--toggle-border);
+  border-radius: 999px;
+  background: var(--toggle-bg);
+  color: var(--toggle-text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.4rem 0.68rem;
+  cursor: pointer;
+}
+
+.next-step-location-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.next-step-location-note {
+  font-size: 0.82rem;
+}
+
+.next-step-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.next-step-option {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-soft);
+  padding: 0.52rem 0.6rem;
+  display: grid;
+  gap: 0.18rem;
+  text-decoration: none;
+}
+
+.next-step-option strong {
+  color: var(--sea-deep);
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.next-step-option span {
+  color: var(--ink-faint);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .day-grid {
   margin-top: 1.25rem;
   display: grid;
@@ -1800,6 +1907,10 @@ body {
   }
 
   .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .next-step-options {
     grid-template-columns: 1fr;
   }
 
